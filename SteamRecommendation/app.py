@@ -182,8 +182,30 @@ def load_steam(path):
 
 
 games = load_steam(CSV_PATH)
-all_genres = sorted([g for g in games["genre_primary"].dropna().unique() if g])
-all_titles = sorted([t for t in games["name"].dropna().unique() if t])
+# Pastikan kolom genre_primary ada
+if "genre_primary" not in games.columns:
+    if "genres" in games.columns:
+        games["genre_primary"] = (
+            games["genres"]
+            .astype(str)
+            .str.split(",")
+            .str[0]
+            .str.strip()
+        )
+    else:
+        games["genre_primary"] = ""
+# Pastikan kolom name ada
+if "name" not in games.columns:
+    games["name"] = ""
+
+# List genre dan title
+all_genres = sorted(
+    [g for g in games["genre_primary"].dropna().unique() if str(g).strip()]
+)
+
+all_titles = sorted(
+    [t for t in games["name"].dropna().unique() if str(t).strip()]
+)
 
 # ==============================================================
 # RECOMMENDATION FUNCTIONS
