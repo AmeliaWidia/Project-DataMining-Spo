@@ -1,5 +1,5 @@
 # SteamVault — Steam Game Discovery & Recommendation Dashboard
-    
+
 import math
 import re
 from pathlib import Path
@@ -275,9 +275,9 @@ st.sidebar.title("⚙️ Filters")
 min_year = int(games["year"].dropna().min()) if games["year"].notna().any() else 2000
 max_year = int(games["year"].dropna().max()) if games["year"].notna().any() else 2026
  
-f_year   = st.sidebar.slider("Release Year", min_year, max_year, (max(min_year, 2015), max_year))
+f_year   = st.sidebar.slider("Release Year", min_year, max_year, (min_year, max_year))
 f_price  = st.sidebar.slider("Max Price ($)", 0, 150, 60)
-f_pos    = st.sidebar.slider("Min Positivity (%)", 0, 100, 60)
+f_pos    = st.sidebar.slider("Min Positivity (%)", 0, 100, 0)
 f_genre  = st.sidebar.selectbox("Genre", ["All"] + all_genres)
 f_mode   = st.sidebar.selectbox("Mode", ["any", "singleplayer", "multiplayer", "coop"])
  
@@ -337,7 +337,7 @@ with tab_discover:
         "Sort By",
         ["score", "recommendations", "positivity", "avg_playtime_forever", "peak_ccu", "year", "metacritic_score"],
     )
-    n_show = st.number_input("Number of Games", 8, 200, 24, step=8)
+    n_show = st.number_input("Number of Games", 8, 2000, 24, step=8)
  
     browse = filt.copy()
     if search:
@@ -361,14 +361,21 @@ with tab_discover:
         if row.get("header_image", ""):
             img_html = f"<img src='{row['header_image']}' onerror=\"this.style.display='none'\">"
  
+        steam_url = f"https://store.steampowered.com/app/{int(row['app_id'])}/"
         st.markdown(
             f"""
             <div class='game-card'>
-                {img_html}
+                <a href='{steam_url}' target='_blank' style='display:contents'>
+                    {img_html}
+                </a>
                 <div class='game-card-body'>
                     <span class='score-pill'>Score {row.get('score', 0):.1f}</span>
-                    <h4 style='margin:0 0 4px'>{row['name']}</h4>
-                    <p style='margin:0;color:#94a3b8;font-size:13px'>
+                    <a href='{steam_url}' target='_blank'
+                       style='text-decoration:none;color:inherit'>
+                        <h4 style='margin:0 0 4px;display:inline'>{row['name']}</h4>
+                        <span style='font-size:12px;color:#4a9eff;margin-left:6px'>↗ Steam</span>
+                    </a>
+                    <p style='margin:4px 0 0;color:#94a3b8;font-size:13px'>
                         {row.get('genre_primary', '')} ·
                         {int(row['year']) if pd.notna(row['year']) else '—'} ·
                         {price_tag}
@@ -398,7 +405,9 @@ with tab_detail:
                 st.image(g["header_image"], use_container_width=True)
  
         with col_info:
+            steam_url = f"https://store.steampowered.com/app/{int(g['app_id'])}/"
             st.subheader(g["name"])
+            st.markdown(f"[🔗 Buka di Steam Store]({steam_url})", unsafe_allow_html=False)
             desc = g.get("short_description", "")
             if desc:
                 st.write(desc)
@@ -425,18 +434,23 @@ with tab_detail:
         st.markdown("### 🎮 Similar Games")
         sim = rec_cb(games, selected_game, 8)
         if not sim.empty:
+            sim["steam_url"] = sim["app_id"].apply(
+                lambda x: f"https://store.steampowered.com/app/{int(x)}/"
+            )
             st.dataframe(
-                sim[["name", "genre_primary", "cb_score", "score", "positivity"]].rename(
+                sim[["name", "genre_primary", "cb_score", "score", "positivity", "steam_url"]].rename(
                     columns={
                         "name": "Game",
                         "genre_primary": "Genre",
                         "cb_score": "Similarity",
                         "score": "Score",
                         "positivity": "Positivity %",
+                        "steam_url": "Steam",
                     }
                 ),
                 use_container_width=True,
                 hide_index=True,
+                column_config={"Steam": st.column_config.LinkColumn("Steam", display_text="↗ Buka")},
             )
  
  
@@ -487,7 +501,15 @@ with tab_recommend:
         show_cols = [c for c in ["name", "genre_primary", "score", "positivity",
                                   "recommendations", "cb_score", "wr", "hybrid_score"]
                      if c in recs.columns]
-        st.dataframe(recs[show_cols], use_container_width=True, hide_index=True)
+        recs["steam_url"] = recs["app_id"].apply(
+            lambda x: f"https://store.steampowered.com/app/{int(x)}/"
+        )
+        st.dataframe(
+            recs[show_cols + ["steam_url"]],
+            use_container_width=True,
+            hide_index=True,
+            column_config={"steam_url": st.column_config.LinkColumn("Steam", display_text="↗ Buka")},
+        )
  
  
 # ── ANALYTICS ─────────────────────────────────────────────────────────────────
