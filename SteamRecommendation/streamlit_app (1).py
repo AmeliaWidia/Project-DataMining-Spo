@@ -1,7 +1,8 @@
 # SteamVault Pro - Steam Game Discovery & Hybrid Recommendation Dashboard
+# Put this file in the same folder as steam_top_games_2026.csv, or upload the CSV from the sidebar.
 
 from __future__ import annotations
- 
+
 import html
 import io
 import math
@@ -11,7 +12,7 @@ from urllib.parse import quote
 from collections import Counter
 from pathlib import Path
 from typing import Iterable, Sequence
- 
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -19,17 +20,17 @@ import plotly.graph_objects as go
 import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
- 
+
 try:
     from scipy import sparse
 except Exception:  # pragma: no cover
     sparse = None
- 
- 
+
+
 APP_TITLE = "SteamVault Pro"
 LOGO_SRC = "data:image/jpeg;base64,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"
 DEFAULT_CSV = Path(__file__).parent / "steam_top_games_2026.csv"
- 
+
 st.set_page_config(
     page_title=APP_TITLE,
     page_icon="🎮",
@@ -37,12 +38,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
 # -----------------------------------------------------------------------------
 # Styling
 # -----------------------------------------------------------------------------
 def render_html(markup: str, **_ignored_kwargs) -> None:
     """Render custom HTML/CSS as HTML, not Markdown.
- 
+
     This prevents Markdown from turning nested card HTML into visible text/code blocks.
     """
     cleaned = textwrap.dedent(str(markup)).strip()
@@ -52,14 +54,14 @@ def render_html(markup: str, **_ignored_kwargs) -> None:
         st.html(cleaned)
     except Exception:
         st.markdown(cleaned, unsafe_allow_html=True)
- 
- 
+
+
 def inject_css() -> None:
     render_html(
         """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
- 
+
         :root {
             --mist: #A5C5CC;
             --ink: #021334;
@@ -79,18 +81,18 @@ def inject_css() -> None:
             --muted: rgba(165, 197, 204, 0.72);
             --shadow: rgba(0, 0, 0, 0.46);
         }
- 
+
         html {
             scroll-behavior: smooth;
         }
- 
+
         html, body, .stApp {
             min-height: 100%;
             background: var(--bg-0) !important;
             color: var(--text) !important;
             font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
         }
- 
+
         .stApp {
             background:
                 radial-gradient(circle at 12% -8%, rgba(253, 199, 135, 0.16), transparent 22rem),
@@ -98,7 +100,7 @@ def inject_css() -> None:
                 radial-gradient(circle at 50% 105%, rgba(151, 112, 134, 0.20), transparent 36rem),
                 linear-gradient(135deg, #020817 0%, #021334 45%, #010714 100%) !important;
         }
- 
+
         .stApp::before {
             content: "";
             position: fixed;
@@ -111,7 +113,7 @@ def inject_css() -> None:
             background-size: 72px 72px;
             mask-image: linear-gradient(to bottom, rgba(0,0,0,.95), rgba(0,0,0,.30));
         }
- 
+
         .stApp::after {
             content: "";
             position: fixed;
@@ -122,7 +124,7 @@ def inject_css() -> None:
                 radial-gradient(circle at 50% 0%, transparent 0, rgba(2, 19, 52, 0.25) 42%, rgba(2, 8, 23, 0.72) 100%),
                 linear-gradient(to bottom, rgba(2, 19, 52, 0.05), rgba(0,0,0,0.28));
         }
- 
+
         .main .block-container, .block-container {
             position: relative;
             z-index: 1;
@@ -130,12 +132,12 @@ def inject_css() -> None:
             padding-top: 1rem;
             padding-bottom: 4rem;
         }
- 
+
         #MainMenu, footer, [data-testid="stDecoration"] {
             visibility: hidden !important;
             height: 0 !important;
         }
- 
+
         /* Header stays alive so Streamlit's native sidebar open/close control can still work. */
         header, header[data-testid="stHeader"], [data-testid="stHeader"] {
             visibility: visible !important;
@@ -156,7 +158,7 @@ def inject_css() -> None:
             background: transparent !important;
             pointer-events: auto !important;
         }
- 
+
         /* Make the collapsed-sidebar opener impossible to miss. */
         [data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"] {
             visibility: visible !important;
@@ -207,25 +209,25 @@ def inject_css() -> None:
             opacity: 1 !important;
             pointer-events: auto !important;
         }
- 
+
         .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
         .stApp p, .stApp li, .stApp label, .stApp span,
         .stApp [data-testid="stMarkdownContainer"] {
             color: var(--text) !important;
         }
- 
+
         .stApp a {
             color: var(--mist) !important;
         }
- 
+
         h1, h2, h3 {
             letter-spacing: -0.055em;
         }
- 
+
         .muted, .stApp small, [data-testid="stCaptionContainer"] p {
             color: var(--muted) !important;
         }
- 
+
         section[data-testid="stSidebar"] {
             background:
                 radial-gradient(circle at 20% 0%, rgba(253, 199, 135, 0.10), transparent 16rem),
@@ -233,12 +235,12 @@ def inject_css() -> None:
             border-right: 1px solid rgba(165, 197, 204, 0.16);
             box-shadow: 22px 0 60px rgba(0,0,0,.32);
         }
- 
+
         section[data-testid="stSidebar"] > div {
             background: transparent !important;
             padding-top: 1.2rem;
         }
- 
+
         section[data-testid="stSidebar"] h1,
         section[data-testid="stSidebar"] h2,
         section[data-testid="stSidebar"] h3,
@@ -248,7 +250,7 @@ def inject_css() -> None:
         section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] * {
             color: var(--text-soft) !important;
         }
- 
+
         .brand-card {
             position: relative;
             overflow: hidden;
@@ -291,7 +293,7 @@ def inject_css() -> None:
             font-size: .82rem;
             line-height: 1.5;
         }
- 
+
         .sidebar-note {
             margin: 10px 0 18px;
             padding: 11px 13px;
@@ -302,7 +304,7 @@ def inject_css() -> None:
             font-size: .80rem;
             line-height: 1.45;
         }
- 
+
         .stTextInput input,
         .stNumberInput input,
         .stTextArea textarea,
@@ -315,7 +317,7 @@ def inject_css() -> None:
             color: var(--text) !important;
             box-shadow: inset 0 1px 0 rgba(255,255,255,.05) !important;
         }
- 
+
         .stTextInput input,
         .stNumberInput input,
         .stTextArea textarea,
@@ -324,14 +326,14 @@ def inject_css() -> None:
             -webkit-text-fill-color: var(--text) !important;
             caret-color: var(--gold) !important;
         }
- 
+
         div[data-baseweb="select"] span,
         div[data-baseweb="select"] svg,
         div[data-baseweb="select"] div {
             color: var(--text) !important;
             fill: var(--text) !important;
         }
- 
+
         div[data-baseweb="popover"], div[data-baseweb="popover"] > div,
         div[role="listbox"], ul[role="listbox"] {
             background: #03112d !important;
@@ -340,7 +342,7 @@ def inject_css() -> None:
             color: var(--text) !important;
             box-shadow: 0 28px 70px rgba(0,0,0,.55) !important;
         }
- 
+
         div[role="option"], li[role="option"] {
             background: #03112d !important;
             color: var(--text) !important;
@@ -354,7 +356,7 @@ def inject_css() -> None:
             color: var(--text) !important;
             border-radius: 999px !important;
         }
- 
+
         [data-testid="stFileUploaderDropzone"] {
             background: rgba(2, 19, 52, 0.74) !important;
             border: 1px dashed rgba(253, 199, 135, 0.34) !important;
@@ -365,7 +367,7 @@ def inject_css() -> None:
         [data-testid="stFileUploaderDropzone"] * {
             color: var(--text) !important;
         }
- 
+
         [data-testid="stFileUploaderDropzone"] button,
         .stButton button,
         .stDownloadButton button {
@@ -390,7 +392,7 @@ def inject_css() -> None:
             filter: brightness(1.05);
             box-shadow: 0 18px 48px rgba(253,199,135,.26) !important;
         }
- 
+
         [data-testid="stSlider"] [data-testid="stThumbValue"] {
             color: var(--gold) !important;
             font-weight: 950 !important;
@@ -419,7 +421,7 @@ def inject_css() -> None:
         [data-testid="stSlider"] div[data-baseweb="slider"] div[style*="rgb(255,75,75)"] {
             background: linear-gradient(90deg, var(--mid), var(--mist)) !important;
         }
- 
+
         .hero {
             position: relative;
             overflow: hidden;
@@ -657,7 +659,7 @@ def inject_css() -> None:
             color: var(--muted) !important;
             font-size: .73rem;
         }
- 
+
         .feature-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -696,7 +698,7 @@ def inject_css() -> None:
             font-size: .82rem;
             line-height: 1.45;
         }
- 
+
         div[data-testid="stMetric"] {
             position: relative;
             overflow: hidden;
@@ -715,7 +717,7 @@ def inject_css() -> None:
         }
         div[data-testid="stMetric"] label { color: var(--muted) !important; font-weight: 800 !important; }
         div[data-testid="stMetric"] [data-testid="stMetricValue"] { color: #ffffff !important; font-weight: 950 !important; }
- 
+
         .glass-panel {
             position: relative;
             overflow: hidden;
@@ -728,7 +730,7 @@ def inject_css() -> None:
             color: var(--text) !important;
         }
         .glass-panel b { color: #fff !important; }
- 
+
         .section-title {
             display: flex;
             align-items: end;
@@ -747,7 +749,7 @@ def inject_css() -> None:
             color: var(--muted) !important;
             font-size: .84rem;
         }
- 
+
         .game-card {
             position: relative;
             height: 100%;
@@ -998,7 +1000,7 @@ def inject_css() -> None:
         }
         .method-card h4 { margin-top: 0; color: #fff !important; }
         .method-card p { color: var(--text-soft) !important; }
- 
+
         .stTabs [data-baseweb="tab-list"] {
             gap: 8px;
             padding: 8px;
@@ -1020,7 +1022,7 @@ def inject_css() -> None:
             box-shadow: 0 0 28px rgba(253,199,135,.10);
         }
         .stTabs [aria-selected="true"] p { color: var(--gold) !important; }
- 
+
         [data-testid="stExpander"] {
             background: rgba(2,19,52,.66) !important;
             border: 1px solid rgba(165,197,204,.15) !important;
@@ -1039,7 +1041,7 @@ def inject_css() -> None:
             border: 1px solid rgba(165,197,204,.16) !important;
             box-shadow: 0 20px 60px rgba(0,0,0,.28);
         }
- 
+
         @media (max-width: 1100px) {
             .hero-grid { grid-template-columns: 1fr; }
             .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1057,8 +1059,8 @@ def inject_css() -> None:
             .stTabs [data-baseweb="tab-list"] { border-radius: 22px; flex-wrap: wrap; }
             .game-card { border-radius: 22px; }
         }
- 
- 
+
+
         /* Final premium pass: cinematic depth, clickable UI, stronger identity */
         .stApp [data-testid="stVerticalBlock"] { animation: softReveal .55s ease both; }
         @keyframes softReveal {
@@ -1083,7 +1085,7 @@ def inject_css() -> None:
             45% { opacity: .96; }
             to { transform: translate3d(10px, -22px, 0) scale(1.08); opacity: .40; }
         }
- 
+
         .hero {
             min-height: clamp(540px, 58vh, 690px);
             border-radius: 42px;
@@ -1178,7 +1180,7 @@ def inject_css() -> None:
             backdrop-filter: blur(16px);
         }
         .cta:hover { transform: translateY(-4px) scale(1.012); }
- 
+
         .hero-panel {
             transform: perspective(1000px) rotateY(-7deg) rotateX(3deg);
             border-color: rgba(253,199,135,.24);
@@ -1252,7 +1254,7 @@ def inject_css() -> None:
         .mock-row.one { top: 26px; }
         .mock-row.two { top: 138px; }
         .mock-row.three { top: 250px; }
- 
+
         .spotlight-deck {
             position: relative;
             overflow: hidden;
@@ -1296,7 +1298,7 @@ def inject_css() -> None:
             padding: 8px 12px;
             background: linear-gradient(135deg, var(--gold), var(--mist));
         }
- 
+
         .game-card::after {
             content: "";
             position: absolute;
@@ -1357,7 +1359,7 @@ def inject_css() -> None:
             background: rgba(253,199,135,.12) !important;
         }
         .card-actions { position: relative; z-index: 3; }
- 
+
         div[role="radiogroup"] {
             gap: 10px !important;
         }
@@ -1373,7 +1375,7 @@ def inject_css() -> None:
             border-color: rgba(253,199,135,.28) !important;
             background: rgba(253,199,135,.08) !important;
         }
- 
+
         .top-nav-shell {
             position: sticky;
             top: 0;
@@ -1485,7 +1487,20 @@ def inject_css() -> None:
             .top-nav-link { flex: 1 1 42%; }
             .top-nav-meta { width: 100%; justify-content: center; margin-left: 0; }
         }
- 
+
+        .top-nav-link.home-btn {
+            color: var(--gold) !important;
+            border-color: rgba(253,199,135,.30);
+            background: rgba(253,199,135,.08);
+            margin-left: 6px;
+            font-weight: 950;
+        }
+        .top-nav-link.home-btn:hover {
+            background: rgba(253,199,135,.16);
+            border-color: rgba(253,199,135,.50);
+            box-shadow: 0 14px 34px rgba(253,199,135,.14);
+        }
+
         .nav-intro {
             display: flex;
             align-items: center;
@@ -1511,7 +1526,7 @@ def inject_css() -> None:
             font-weight: 800;
             text-align: right;
         }
- 
+
         @media (max-width: 900px) {
             .hero-panel { transform: none; }
             .hero-grid { grid-template-columns: 1fr; }
@@ -1520,8 +1535,8 @@ def inject_css() -> None:
             .hero h1 { font-size: clamp(3.0rem, 16vw, 4.8rem); }
             .active-filter-card { align-items: flex-start; flex-direction: column; }
         }
- 
- 
+
+
         .card-grid {
             display: grid;
             grid-template-columns: repeat(var(--cards-per-row, 3), minmax(0, 1fr));
@@ -1531,8 +1546,8 @@ def inject_css() -> None:
         .card-grid .game-card { margin-bottom: 0; }
         @media (max-width: 1180px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (max-width: 760px) { .card-grid { grid-template-columns: 1fr; } }
- 
- 
+
+
         /* Detail page + gameplay description patch */
         .game-desc {
             margin: 11px 0 0;
@@ -1736,8 +1751,8 @@ def inject_css() -> None:
         .stDownloadButton button * {
             color: var(--ink) !important;
         }
- 
- 
+
+
         /* User-facing explanation should feel human, not like a statistics note. */
         .why {
             background: linear-gradient(180deg, rgba(165,197,204,.105), rgba(39,90,145,.12)) !important;
@@ -1746,8 +1761,8 @@ def inject_css() -> None:
         .why-label {
             color: var(--gold) !important;
         }
- 
- 
+
+
         /* Final fix: keep the native Streamlit sidebar opener visible and obvious. */
         header, header[data-testid="stHeader"], [data-testid="stHeader"] {
             visibility: visible !important;
@@ -1866,7 +1881,7 @@ def inject_css() -> None:
             object-fit: cover !important;
             border-radius: inherit !important;
         }
- 
+
         /* Premium simplified UX pass: immersive sidebar + intentional feature icons */
         section[data-testid="stSidebar"] {
             background:
@@ -2020,8 +2035,8 @@ def inject_css() -> None:
         }
         .feature-copy b { margin-bottom: 7px !important; }
         .feature-copy span { display: block; }
- 
- 
+
+
         /* Mock icons in hero panel */
         .mock-icon-wrap {
             display: grid !important;
@@ -2039,7 +2054,7 @@ def inject_css() -> None:
             stroke-linejoin: round;
             filter: drop-shadow(0 0 8px rgba(253,199,135,.42));
         }
- 
+
         /* About Us section */
         .about-section {
             margin: 42px 0 0;
@@ -2148,18 +2163,18 @@ def inject_css() -> None:
         }
         .about-project b { color: var(--gold) !important; }
         .about-project p { color: var(--text-soft) !important; margin: 7px 0 0; font-size: .86rem; line-height: 1.62; }
- 
+
         </style>
         """
     )
- 
+
 # -----------------------------------------------------------------------------
 # Data utilities
 # -----------------------------------------------------------------------------
 def clean_name(col: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", str(col).strip().lower()).strip("_")
- 
- 
+
+
 def canonicalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df.columns = [clean_name(c) for c in df.columns]
@@ -2198,8 +2213,8 @@ def canonicalize_columns(df: pd.DataFrame) -> pd.DataFrame:
                 df = df.rename(columns={variant: canonical})
                 break
     return df
- 
- 
+
+
 def split_tokens(value: object) -> list[str]:
     if pd.isna(value):
         return []
@@ -2217,8 +2232,8 @@ def split_tokens(value: object) -> list[str]:
             tokens.append(token)
             seen.add(token.lower())
     return tokens
- 
- 
+
+
 def parse_owners(value: object) -> float:
     if pd.isna(value):
         return np.nan
@@ -2226,8 +2241,8 @@ def parse_owners(value: object) -> float:
     if not nums:
         return np.nan
     return float(np.mean(nums) / 1_000_000)
- 
- 
+
+
 def to_number(series: pd.Series) -> pd.Series:
     cleaned = (
         series.astype(str)
@@ -2238,12 +2253,12 @@ def to_number(series: pd.Series) -> pd.Series:
         .replace({"": np.nan, "nan": np.nan, "None": np.nan})
     )
     return pd.to_numeric(cleaned, errors="coerce")
- 
- 
+
+
 def to_bool(series: pd.Series) -> pd.Series:
     true_values = {"true", "1", "yes", "y", "free", "f2p"}
     false_values = {"false", "0", "no", "n", "paid", ""}
- 
+
     def _convert(x: object) -> bool:
         if isinstance(x, bool):
             return x
@@ -2255,10 +2270,10 @@ def to_bool(series: pd.Series) -> pd.Series:
         if val in false_values:
             return False
         return False
- 
+
     return series.apply(_convert).astype(bool)
- 
- 
+
+
 def robust_minmax(series: pd.Series, invert: bool = False, default: float = 0.5) -> pd.Series:
     s = pd.to_numeric(series, errors="coerce").astype(float)
     if s.notna().sum() == 0:
@@ -2272,15 +2287,15 @@ def robust_minmax(series: pd.Series, invert: bool = False, default: float = 0.5)
         out = (s.clip(q_low, q_high) - q_low) / (q_high - q_low)
         out = out.fillna(default).clip(0, 1)
     return 1 - out if invert else out
- 
- 
+
+
 def percentage_series(series: pd.Series) -> pd.Series:
     s = pd.to_numeric(series, errors="coerce")
     if s.dropna().gt(1).any():
         return (s / 100).clip(0, 1).fillna(0.5)
     return s.clip(0, 1).fillna(0.5)
- 
- 
+
+
 def weighted_content_text(row: pd.Series) -> str:
     tags = split_tokens(row.get("tags", ""))
     genres = split_tokens(row.get("genres", ""))
@@ -2297,8 +2312,8 @@ def weighted_content_text(row: pd.Series) -> str:
     parts.extend([desc] * 2)
     cleaned = " ".join(parts).lower()
     return cleaned if cleaned.strip() else "unknown game"
- 
- 
+
+
 REQUIRED_COLUMNS = {
     "app_id": np.nan,
     "name": "Unknown Game",
@@ -2326,18 +2341,18 @@ REQUIRED_COLUMNS = {
     "estimated_owners": "",
     "is_free": False,
 }
- 
- 
+
+
 def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
     df = canonicalize_columns(raw)
     for col, default in REQUIRED_COLUMNS.items():
         if col not in df.columns:
             df[col] = default
- 
+
     df = df.copy().reset_index(drop=True)
     if df["app_id"].isna().all():
         df["app_id"] = np.arange(1, len(df) + 1)
- 
+
     numeric_cols = [
         "price_usd",
         "discount_pct",
@@ -2355,7 +2370,7 @@ def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
     ]
     for col in numeric_cols:
         df[col] = to_number(df[col])
- 
+
     text_cols = [
         "name",
         "release_date",
@@ -2370,34 +2385,34 @@ def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
     ]
     for col in text_cols:
         df[col] = df[col].fillna("").astype(str).replace("nan", "")
- 
+
     df["is_free"] = to_bool(df["is_free"])
     df.loc[df["price_usd"].fillna(np.inf) <= 0, "is_free"] = True
- 
+
     if df["release_date"].str.fullmatch(r"\d{4}(\.0)?").all():
         df["year"] = pd.to_numeric(df["release_date"], errors="coerce")
     else:
         df["year"] = df["release_date"].str.extract(r"((?:19|20)\d{2})")[0]
         df["year"] = pd.to_numeric(df["year"], errors="coerce")
- 
+
     # Clean obvious playtime sentinels without erasing valid long games.
     for col in ["avg_playtime_forever", "avg_playtime_2weeks", "median_playtime"]:
         if df[col].notna().sum() > 20:
             upper = df[col].quantile(0.995)
             df[col] = df[col].where(df[col] <= upper, np.nan)
- 
+
     df["genre_list"] = df["genres"].apply(split_tokens)
     df["tag_list"] = df["tags"].apply(split_tokens)
     df["category_list"] = df["categories"].apply(split_tokens)
     df["genre_primary"] = df["genre_list"].apply(lambda x: x[0] if x else "Unknown")
- 
+
     combined = (
         df["categories"].fillna("") + " " + df["tags"].fillna("") + " " + df["genres"].fillna("")
     ).str.lower()
     df["is_singleplayer"] = combined.str.contains("single-player|single player|singleplayer", regex=True, na=False)
     df["is_multiplayer"] = combined.str.contains("multi-player|multiplayer|online pvp|pvp", regex=True, na=False)
     df["is_coop"] = combined.str.contains("co-op|coop|cooperative", regex=True, na=False)
- 
+
     df["total_reviews"] = df["positive_reviews"].fillna(0) + df["negative_reviews"].fillna(0)
     df["review_volume"] = df[["recommendations", "total_reviews"]].max(axis=1).fillna(0)
     df["positivity"] = np.where(
@@ -2407,7 +2422,7 @@ def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
     )
     # Fallback: if review polarity is unavailable, use metacritic as imperfect rating proxy.
     df["positivity"] = df["positivity"].fillna(df["metacritic_score"])
- 
+
     valid_rating = df["positivity"].dropna()
     C = float(valid_rating.mean()) if len(valid_rating) else 70.0
     m = float(df["review_volume"].quantile(0.70)) if df["review_volume"].notna().any() else 50.0
@@ -2416,11 +2431,11 @@ def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
     v = df["review_volume"].fillna(0)
     R = df["positivity"].fillna(C)
     df["bayes_rating"] = ((v / (v + m)) * R + (m / (v + m)) * C).clip(0, 100)
- 
+
     df["owners_m"] = df["estimated_owners"].apply(parse_owners)
     df["price_effective"] = np.where(df["is_free"], 0.0, df["price_usd"].fillna(df["price_usd"].median()))
     df["playtime_h"] = df["avg_playtime_forever"] / 60
- 
+
     df["rating_score"] = (df["bayes_rating"] / 100).fillna(0.5).clip(0, 1)
     df["popularity_score"] = robust_minmax(np.log1p(df["review_volume"].fillna(0)))
     df["metacritic_norm"] = percentage_series(df["metacritic_score"])
@@ -2429,7 +2444,7 @@ def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
     df["affordability_score"] = robust_minmax(df["price_effective"].fillna(0), invert=True)
     df["discount_score"] = percentage_series(df["discount_pct"].fillna(0))
     df["novelty_score"] = (1 - df["popularity_score"]).clip(0, 1)
- 
+
     df["quality_score"] = (
         0.34 * df["rating_score"]
         + 0.22 * df["popularity_score"]
@@ -2452,22 +2467,22 @@ def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
     ).clip(0, 1)
     df["display_score"] = (df["quality_score"] * 100).round(1)
     df["content_text"] = df.apply(weighted_content_text, axis=1)
- 
+
     return df
- 
- 
+
+
 @st.cache_data(show_spinner=False)
 def load_games_from_bytes(file_bytes: bytes) -> pd.DataFrame:
     raw = pd.read_csv(io.BytesIO(file_bytes))
     return prepare_games(raw)
- 
- 
+
+
 @st.cache_data(show_spinner=False)
 def load_games_from_path(path_text: str) -> pd.DataFrame:
     raw = pd.read_csv(path_text)
     return prepare_games(raw)
- 
- 
+
+
 @st.cache_resource(show_spinner=False)
 def build_tfidf(texts: tuple[str, ...]):
     safe_texts = tuple(t if str(t).strip() else "unknown game" for t in texts)
@@ -2483,13 +2498,13 @@ def build_tfidf(texts: tuple[str, ...]):
     )
     matrix = vectorizer.fit_transform(safe_texts)
     return vectorizer, matrix
- 
- 
+
+
 @st.cache_data(show_spinner=False)
 def load_interactions_from_bytes(file_bytes: bytes) -> pd.DataFrame:
     return canonicalize_columns(pd.read_csv(io.BytesIO(file_bytes)))
- 
- 
+
+
 # -----------------------------------------------------------------------------
 # Recommendation functions
 # -----------------------------------------------------------------------------
@@ -2501,8 +2516,8 @@ def top_values_from_lists(df: pd.DataFrame, list_col: str, limit: int = 80) -> l
         if isinstance(values, list):
             counter.update(values)
     return [name for name, _ in counter.most_common(limit)]
- 
- 
+
+
 def normalize_array(arr: np.ndarray, default: float = 0.0) -> np.ndarray:
     arr = np.asarray(arr, dtype=float)
     finite = np.isfinite(arr)
@@ -2517,8 +2532,8 @@ def normalize_array(arr: np.ndarray, default: float = 0.0) -> np.ndarray:
     clean = (clean - mn) / (mx - mn)
     clean = np.nan_to_num(clean, nan=default, posinf=1.0, neginf=0.0)
     return np.clip(clean, 0, 1)
- 
- 
+
+
 def content_scores(
     games: pd.DataFrame,
     matrix,
@@ -2531,7 +2546,7 @@ def content_scores(
     n = len(games)
     score = np.zeros(n, dtype=float)
     weight_total = 0.0
- 
+
     if favorite_titles:
         title_lookup = {str(name).lower(): idx for idx, name in games["name"].items()}
         fav_indices = [title_lookup[t.lower()] for t in favorite_titles if t.lower() in title_lookup]
@@ -2539,7 +2554,7 @@ def content_scores(
             fav_sim = cosine_similarity(matrix[fav_indices], matrix).mean(axis=0)
             score += 0.72 * np.asarray(fav_sim).ravel()
             weight_total += 0.72
- 
+
     profile_terms: list[str] = []
     profile_terms.extend(list(preferred_genres) * 4)
     profile_terms.extend(list(preferred_tags) * 5)
@@ -2550,12 +2565,12 @@ def content_scores(
         term_sim = cosine_similarity(query_vec, matrix).ravel()
         score += 0.28 * term_sim
         weight_total += 0.28
- 
+
     if weight_total <= 0:
         return np.zeros(n, dtype=float)
     return np.clip(score / weight_total, 0, 1)
- 
- 
+
+
 def rule_scores(
     games: pd.DataFrame,
     preferred_genres: Sequence[str],
@@ -2571,19 +2586,19 @@ def rule_scores(
         score = 0.0
         score += 0.35 * float(row.get("quality_score", 0.5))
         score += 0.15 * float(row.get("affordability_score", 0.5))
- 
+
         if genre_set:
             row_genres = {g.lower() for g in row.get("genre_list", [])}
             score += 0.20 * (len(row_genres & genre_set) / max(1, len(genre_set)))
         else:
             score += 0.10
- 
+
         if tag_set:
             row_tags = {t.lower() for t in row.get("tag_list", [])}
             score += 0.22 * (len(row_tags & tag_set) / max(1, len(tag_set)))
         else:
             score += 0.08
- 
+
         price = float(row.get("price_effective", np.nan))
         if bool(row.get("is_free", False)) or (np.isfinite(price) and price <= max_price):
             score += 0.06
@@ -2600,8 +2615,8 @@ def rule_scores(
             score += 0.04
         scores.append(score)
     return np.clip(np.asarray(scores, dtype=float), 0, 1)
- 
- 
+
+
 def apply_candidate_filters(
     games: pd.DataFrame,
     max_price: float,
@@ -2617,28 +2632,28 @@ def apply_candidate_filters(
     res = res[price_ok]
     res = res[res["positivity"].fillna(0) >= min_positivity]
     res = res[res["review_volume"].fillna(0) >= min_reviews]
- 
+
     if preferred_genres:
         genre_set = {g.lower() for g in preferred_genres}
         res = res[res["genre_list"].apply(lambda xs: bool({x.lower() for x in xs} & genre_set))]
- 
+
     for tag in must_have_tags:
         res = res[res["tag_list"].apply(lambda xs, t=tag: any(x.lower() == t.lower() for x in xs))]
- 
+
     if mode == "singleplayer":
         res = res[res["is_singleplayer"]]
     elif mode == "multiplayer":
         res = res[res["is_multiplayer"]]
     elif mode == "coop":
         res = res[res["is_coop"]]
- 
+
     if exclude_titles:
         exclude = {t.lower() for t in exclude_titles}
         res = res[~res["name"].str.lower().isin(exclude)]
- 
+
     return res
- 
- 
+
+
 def build_interaction_cf_scores(
     games: pd.DataFrame,
     interactions: pd.DataFrame | None,
@@ -2646,7 +2661,7 @@ def build_interaction_cf_scores(
 ) -> np.ndarray | None:
     if interactions is None or interactions.empty or sparse is None or not favorite_titles:
         return None
- 
+
     df_int = canonicalize_columns(interactions)
     if "user_id" not in df_int.columns:
         for candidate in ["user", "uid", "steamid", "steam_id"]:
@@ -2655,7 +2670,7 @@ def build_interaction_cf_scores(
                 break
     if "user_id" not in df_int.columns:
         return None
- 
+
     id_col = None
     if "app_id" in df_int.columns and "app_id" in games.columns:
         id_col = "app_id"
@@ -2663,7 +2678,7 @@ def build_interaction_cf_scores(
         id_col = "name"
     else:
         return None
- 
+
     if "rating" in df_int.columns:
         values = to_number(df_int["rating"]).fillna(0).clip(lower=0)
     elif "playtime_forever" in df_int.columns:
@@ -2672,23 +2687,23 @@ def build_interaction_cf_scores(
         values = to_bool(df_int["liked"]).astype(int)
     else:
         values = pd.Series(1.0, index=df_int.index)
- 
+
     if id_col == "app_id":
         item_map = pd.Series(games.index.values, index=games["app_id"].astype(str)).to_dict()
         item_idx = df_int["app_id"].astype(str).map(item_map)
     else:
         item_map = pd.Series(games.index.values, index=games["name"].str.lower()).to_dict()
         item_idx = df_int["name"].astype(str).str.lower().map(item_map)
- 
+
     valid = item_idx.notna() & df_int["user_id"].notna() & values.notna() & (values > 0)
     if valid.sum() < 3:
         return None
- 
+
     users = pd.factorize(df_int.loc[valid, "user_id"].astype(str))[0]
     items = item_idx.loc[valid].astype(int).to_numpy()
     vals = values.loc[valid].astype(float).to_numpy()
     mat = sparse.csr_matrix((vals, (users, items)), shape=(users.max() + 1, len(games)))
- 
+
     title_lookup = {str(name).lower(): idx for idx, name in games["name"].items()}
     fav_indices = [title_lookup[t.lower()] for t in favorite_titles if t.lower() in title_lookup]
     if not fav_indices:
@@ -2696,8 +2711,8 @@ def build_interaction_cf_scores(
     item_user = mat.T.tocsr()
     sims = cosine_similarity(item_user[fav_indices], item_user).mean(axis=0)
     return np.asarray(sims).ravel()
- 
- 
+
+
 def mmr_rerank(
     candidates: pd.DataFrame,
     matrix,
@@ -2711,13 +2726,13 @@ def mmr_rerank(
     pool = candidates.sort_values(score_col, ascending=False).head(pool_size).copy()
     if diversity <= 0 or len(pool) <= top_n:
         return pool.head(top_n)
- 
+
     rel = normalize_array(pool[score_col].to_numpy(), default=0.5)
     idxs = pool.index.to_list()
     selected_positions: list[int] = []
     remaining_positions = list(range(len(idxs)))
     lambda_rel = float(np.clip(1 - diversity, 0.35, 0.95))
- 
+
     while remaining_positions and len(selected_positions) < top_n:
         if not selected_positions:
             best = max(remaining_positions, key=lambda p: rel[p])
@@ -2731,11 +2746,11 @@ def mmr_rerank(
             best = remaining_positions[int(np.argmax(mmr_values))]
         selected_positions.append(best)
         remaining_positions.remove(best)
- 
+
     selected_indices = [idxs[p] for p in selected_positions]
     return pool.loc[selected_indices]
- 
- 
+
+
 def recommend_games(
     games: pd.DataFrame,
     matrix,
@@ -2767,7 +2782,7 @@ def recommend_games(
     )
     if candidate_df.empty:
         return candidate_df
- 
+
     content = content_scores(games, matrix, vectorizer, favorite_titles, preferred_genres, preferred_tags, mood_terms)
     rule = rule_scores(games, preferred_genres, preferred_tags, max_price, min_positivity, mode)
     cf_true = build_interaction_cf_scores(games, interactions, favorite_titles)
@@ -2777,7 +2792,7 @@ def recommend_games(
     else:
         cf = normalize_array(cf_true, default=0.0)
         cf_label = "User-item CF"
- 
+
     scores = pd.DataFrame(
         {
             "content_component": normalize_array(content, default=0.0),
@@ -2789,7 +2804,7 @@ def recommend_games(
         },
         index=games.index,
     )
- 
+
     if engine == "Content-Based":
         final = 0.78 * scores["content_component"] + 0.14 * scores["quality_component"] + 0.08 * scores["value_component"]
     elif engine == "Rule-Based":
@@ -2806,22 +2821,22 @@ def recommend_games(
             + normalized.get("value", 0.0) * scores["value_component"]
             + normalized.get("novelty", 0.0) * scores["novelty_component"]
         )
- 
+
     out = candidate_df.join(scores, how="left")
     out["final_score"] = final.loc[out.index].clip(0, 1)
     out["final_score_pct"] = (out["final_score"] * 100).round(1)
     out["cf_source"] = cf_label
     out = mmr_rerank(out, matrix, "final_score", top_n, diversity)
     return out.sort_values("final_score", ascending=False).head(top_n)
- 
- 
+
+
 # -----------------------------------------------------------------------------
 # UI helpers
 # -----------------------------------------------------------------------------
 def esc(value: object) -> str:
     return html.escape("" if pd.isna(value) else str(value))
- 
- 
+
+
 def fmt_int(value: object) -> str:
     try:
         if not np.isfinite(float(value)):
@@ -2829,8 +2844,8 @@ def fmt_int(value: object) -> str:
         return f"{int(float(value)):,}"
     except Exception:
         return "-"
- 
- 
+
+
 def fmt_float(value: object, digits: int = 1, suffix: str = "") -> str:
     try:
         val = float(value)
@@ -2839,8 +2854,8 @@ def fmt_float(value: object, digits: int = 1, suffix: str = "") -> str:
         return f"{val:.{digits}f}{suffix}"
     except Exception:
         return "-"
- 
- 
+
+
 def steam_url(row: pd.Series) -> str:
     try:
         app_id = int(float(row.get("app_id", np.nan)))
@@ -2849,8 +2864,8 @@ def steam_url(row: pd.Series) -> str:
     except Exception:
         pass
     return ""
- 
- 
+
+
 def query_value(name: str, default: str = "") -> str:
     """Read one query-param value across Streamlit versions."""
     try:
@@ -2860,8 +2875,8 @@ def query_value(name: str, default: str = "") -> str:
         return str(value) if value is not None else default
     except Exception:
         return default
- 
- 
+
+
 def match_known_value(raw: str, options: Sequence[str]) -> str:
     """Return the existing option with matching casing, if available."""
     raw_clean = str(raw or "").strip()
@@ -2869,8 +2884,8 @@ def match_known_value(raw: str, options: Sequence[str]) -> str:
         return ""
     lookup = {str(option).lower(): str(option) for option in options}
     return lookup.get(raw_clean.lower(), raw_clean)
- 
- 
+
+
 def app_link(view: str = "Explore", tag: str | None = None, game: str | None = None, anchor: str | None = None) -> str:
     """Create an in-app same-tab navigation link using query params."""
     params = [f"view={quote(str(view), safe='')}"]
@@ -2880,15 +2895,15 @@ def app_link(view: str = "Explore", tag: str | None = None, game: str | None = N
         params.append(f"game={quote(str(game), safe='')}")
     suffix = f"#{anchor}" if anchor else ""
     return "?" + "&".join(params) + suffix
- 
- 
+
+
 def tag_link(tag: str, active_tag: str = "") -> str:
     safe = esc(tag)
     active = " tag-active" if active_tag and active_tag.lower() == str(tag).lower() else ""
     href = app_link("Explore", tag=tag, anchor="content-start")
     return f'<a class="tag{active}" href="{href}" target="_top" title="Show more {safe} games in this page">{safe}</a>'
- 
- 
+
+
 def clean_game_text(value: object) -> str:
     """Plain-text cleanup for Steam descriptions so raw HTML never appears in cards."""
     if value is None:
@@ -2904,15 +2919,15 @@ def clean_game_text(value: object) -> str:
     if text.lower() in {"nan", "none", "null"}:
         return ""
     return text
- 
- 
+
+
 def shorten_text(text: str, limit: int = 170) -> str:
     text = clean_game_text(text)
     if len(text) <= limit:
         return text
     return text[: max(0, limit - 1)].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
- 
- 
+
+
 def gameplay_description(row: pd.Series, limit: int = 180) -> str:
     """Use dataset short_description first, then generate a small gameplay-like summary."""
     desc = clean_game_text(row.get("short_description", ""))
@@ -2927,8 +2942,8 @@ def gameplay_description(row: pd.Series, limit: int = 180) -> str:
     else:
         fallback = f"{title} adalah game {genre} yang dipilih karena kombinasi ulasan pemain, kualitas, harga, dan kecocokan kontennya terlihat menarik."
     return shorten_text(fallback, limit)
- 
- 
+
+
 def game_key(row: pd.Series) -> str:
     try:
         app_id = int(float(row.get("app_id", np.nan)))
@@ -2940,12 +2955,12 @@ def game_key(row: pd.Series) -> str:
         return f"idx-{int(row.name)}"
     except Exception:
         return quote(str(row.get("name", "game")), safe="")
- 
- 
+
+
 def detail_link(row: pd.Series, anchor: str | None = "content-start") -> str:
     return app_link("Detail", game=game_key(row), anchor=anchor)
- 
- 
+
+
 def find_game_by_key(games: pd.DataFrame, key: str) -> pd.Series | None:
     key_clean = str(key or "").strip()
     if not key_clean:
@@ -2962,8 +2977,8 @@ def find_game_by_key(games: pd.DataFrame, key: str) -> pd.Series | None:
     if not matched.empty:
         return matched.iloc[0]
     return None
- 
- 
+
+
 def price_badge(row: pd.Series) -> str:
     if bool(row.get("is_free", False)):
         return "<span class='pill pill-green'>Free</span>"
@@ -2979,8 +2994,8 @@ def price_badge(row: pd.Series) -> str:
     except Exception:
         pass
     return base
- 
- 
+
+
 def component_bar(label: str, value: float) -> str:
     value = float(np.clip(value if np.isfinite(value) else 0, 0, 1))
     pct = int(round(value * 100))
@@ -2990,12 +3005,12 @@ def component_bar(label: str, value: float) -> str:
       <div class='bar-track'><div class='bar-fill' style='width:{pct}%'></div></div>
     </div>
     """).strip()
- 
- 
+
+
 def explain_row(row: pd.Series, games: pd.DataFrame, favorite_titles: Sequence[str], preferred_tags: Sequence[str]) -> str:
     """Generate short, non-technical reasons for normal users."""
     reasons: list[str] = []
- 
+
     if favorite_titles:
         fav_rows = games[games["name"].isin(favorite_titles)]
         fav_tags = set()
@@ -3003,20 +3018,20 @@ def explain_row(row: pd.Series, games: pd.DataFrame, favorite_titles: Sequence[s
         for _, fav in fav_rows.iterrows():
             fav_tags.update([x.lower() for x in fav.get("tag_list", [])])
             fav_genres.update([x.lower() for x in fav.get("genre_list", [])])
- 
+
         shared_tags = [t for t in row.get("tag_list", []) if t.lower() in fav_tags][:3]
         shared_genres = [g for g in row.get("genre_list", []) if g.lower() in fav_genres][:2]
         if shared_tags:
             reasons.append("mirip dengan game favoritmu: " + ", ".join(shared_tags))
         elif shared_genres:
             reasons.append("genrenya mirip dengan game yang kamu suka: " + ", ".join(shared_genres))
- 
+
     if preferred_tags:
         preferred_set = {x.lower() for x in preferred_tags}
         matched = [t for t in row.get("tag_list", []) if t.lower() in preferred_set][:3]
         if matched:
             reasons.append("sesuai tag yang kamu pilih: " + ", ".join(matched))
- 
+
     try:
         positivity = float(row.get("positivity", np.nan))
         review_volume = float(row.get("review_volume", 0))
@@ -3027,7 +3042,7 @@ def explain_row(row: pd.Series, games: pd.DataFrame, favorite_titles: Sequence[s
             reasons.append("rating pemainnya kuat dan cukup dipercaya")
     except Exception:
         pass
- 
+
     try:
         if float(row.get("value_score", 0)) >= 0.72:
             if bool(row.get("is_free", False)):
@@ -3036,22 +3051,22 @@ def explain_row(row: pd.Series, games: pd.DataFrame, favorite_titles: Sequence[s
                 reasons.append("harga dan kualitasnya terasa sepadan")
     except Exception:
         pass
- 
+
     if bool(row.get("is_free", False)) and "gratis dimainkan" not in reasons:
         reasons.append("gratis dimainkan")
- 
+
     try:
         if float(row.get("playtime_h", 0)) >= 20:
             reasons.append("punya potensi waktu main yang panjang")
     except Exception:
         pass
- 
+
     if not reasons:
         reasons.append("skor keseluruhannya bagus dari kombinasi ulasan, popularitas, harga, dan kecocokan konten")
- 
+
     return "; ".join(reasons[:3])
- 
- 
+
+
 def game_card_html(
     row: pd.Series,
     games: pd.DataFrame,
@@ -3123,7 +3138,7 @@ def game_card_html(
     </article>
     """).strip()
     return re.sub(r">\s+<", "><", card_markup)
- 
+
 def render_cards(
     rows: pd.DataFrame,
     games: pd.DataFrame,
@@ -3151,9 +3166,9 @@ def render_cards(
             )
         )
     render_html(f'<div class="card-grid" style="--cards-per-row:{columns};">{"".join(cards_html)}</div>')
- 
- 
- 
+
+
+
 def similar_games_for(row: pd.Series, games: pd.DataFrame, matrix, limit: int = 6) -> pd.DataFrame:
     """Find similar games for the detail page using content similarity plus quality signal."""
     if games.empty:
@@ -3185,12 +3200,12 @@ def similar_games_for(row: pd.Series, games: pd.DataFrame, matrix, limit: int = 
     out = out.drop(index=row.name, errors="ignore")
     out = out[out["name"].astype(str) != str(row.get("name", ""))]
     return out.sort_values("detail_score", ascending=False).head(limit)
- 
- 
+
+
 def detail_panel_html(title: str, body: str) -> str:
     return f'<div class="detail-panel"><b>{esc(title)}</b><p>{esc(body)}</p></div>'
- 
- 
+
+
 def render_game_detail(row: pd.Series, games: pd.DataFrame, matrix, active_tag: str = "") -> None:
     title = esc(row.get("name", "Unknown Game"))
     img = esc(str(row.get("header_image", "")).strip())
@@ -3211,7 +3226,7 @@ def render_game_detail(row: pd.Series, games: pd.DataFrame, matrix, active_tag: 
     first_tag = str(tags[0]) if tags else ""
     more_button = f'<a class="detail-cta secondary" href="{app_link("Explore", tag=first_tag, anchor="content-start")}" target="_top">Explore more {esc(first_tag)}</a>' if first_tag else f'<a class="detail-cta secondary" href="{app_link("Explore", anchor="content-start")}" target="_top">Back to library</a>'
     back_href = app_link("Explore", tag=active_tag if active_tag else None, anchor="content-start")
- 
+
     mode_bits = []
     if bool(row.get("is_singleplayer", False)):
         mode_bits.append("Singleplayer")
@@ -3222,7 +3237,7 @@ def render_game_detail(row: pd.Series, games: pd.DataFrame, matrix, active_tag: 
     mode_text = ", ".join(mode_bits) if mode_bits else "Mode tidak tertulis eksplisit di metadata."
     core_tags = ", ".join(str(t) for t in tags[:5]) if tags else "Tag belum tersedia."
     why_text = explain_row(row, games, [], [])
- 
+
     render_html(f"""
     <section class="detail-hero">
       <a class="back-link" href="{back_href}" target="_top">← Back to library</a>
@@ -3245,18 +3260,18 @@ def render_game_detail(row: pd.Series, games: pd.DataFrame, matrix, active_tag: 
       </div>
     </section>
     """)
- 
+
     panels = "".join([
         detail_panel_html("Gameplay identity", f"{genre} game dengan fokus metadata: {core_tags}. Mode: {mode_text}"),
         detail_panel_html("Studio signal", f"Developer: {developer}. Publisher: {publisher}."),
         detail_panel_html("Kenapa direkomendasikan", why_text),
     ])
     render_html(f'<div class="detail-panels">{panels}</div>')
- 
+
     render_html(section_header("If you're interested in this", "similar games from tags, genre, description, and quality signal"))
     similar = similar_games_for(row, games, matrix, limit=6)
     render_cards(similar, games, columns=3, active_tag=active_tag)
- 
+
 def apply_global_filters(
     games: pd.DataFrame,
     year_range: tuple[int, int],
@@ -3287,8 +3302,8 @@ def apply_global_filters(
         pat = re.escape(search.strip())
         df = df[df["name"].str.contains(pat, case=False, regex=True, na=False)]
     return df
- 
- 
+
+
 def clean_plotly(fig: go.Figure, height: int = 360) -> go.Figure:
     fig.update_layout(
         template="plotly_dark",
@@ -3300,17 +3315,17 @@ def clean_plotly(fig: go.Figure, height: int = 360) -> go.Figure:
         height=height,
     )
     return fig
- 
- 
+
+
 def safe_top_tags(df: pd.DataFrame, n: int = 20) -> pd.DataFrame:
     counter: Counter[str] = Counter()
     for values in df.get("tag_list", []):
         if isinstance(values, list):
             counter.update(values)
     return pd.DataFrame(counter.most_common(n), columns=["tag", "count"])
- 
- 
- 
+
+
+
 def top_unique_games(df: pd.DataFrame, sort_col: str, used_names: set[str], n: int = 3) -> pd.DataFrame:
     """Pick top games while avoiding repeated titles across quick-pick panels."""
     if df.empty or sort_col not in df.columns:
@@ -3322,10 +3337,10 @@ def top_unique_games(df: pd.DataFrame, sort_col: str, used_names: set[str], n: i
         fresh = pd.concat([fresh, fallback], axis=0)
     used_names.update(fresh["name"].astype(str).tolist())
     return fresh
- 
- 
- 
- 
+
+
+
+
 def render_sidebar_brand() -> None:
     with st.sidebar:
         render_html(
@@ -3338,12 +3353,13 @@ def render_sidebar_brand() -> None:
             <div class="sidebar-note">Atur vibe pencarianmu di sini. Filter dibuat ringan supaya fokus tetap ke eksplorasi game, bukan dashboard data.</div>
             """
         )
- 
- 
+
+
 def hero_section(total_games: int, filtered_games: int, data_source: str) -> str:
     explore_href = app_link("Explore", anchor="content-start")
     recommend_href = app_link("Recommend", anchor="content-start")
     overview_href = app_link("Overview", anchor="content-start")
+    about_href = app_link("About", anchor="content-start")
     return f"""
     <section class="hero">
       <div class="hero-grid">
@@ -3364,6 +3380,7 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
             <a class="cta cta-primary" href="{recommend_href}" target="_top">Cari rekomendasi</a>
             <a class="cta cta-secondary" href="{explore_href}" target="_top">Browse library</a>
             <a class="cta cta-secondary" href="{overview_href}" target="_top">Overview / Ringkasan</a>
+            <a class="cta cta-secondary" href="{about_href}" target="_top">About Us</a>
           </div>
           <div class="hero-action-note">
             <b>Rekomendasi</b> = isi preferensi lalu sistem memilih game yang paling cocok.<br>
@@ -3405,7 +3422,7 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
       </div>
     </section>
     """
- 
+
 def feature_strip() -> str:
     icons = {
         "shield": """<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 3l7 3v5c0 4.7-2.9 8.3-7 10-4.1-1.7-7-5.3-7-10V6l7-3z'/><path d='M9.2 12.2l1.8 1.8 4-4.4'/></svg>""",
@@ -3427,10 +3444,10 @@ def feature_strip() -> str:
         for title, desc, icon, variant in items
     )
     return f'<div class="feature-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">{cards}</div>'
- 
+
 def section_header(title: str, subtitle: str = "") -> str:
     return f'<div class="section-title"><h3>{esc(title)}</h3><span>{esc(subtitle)}</span></div>'
- 
+
 def about_us_section() -> str:
     """Render the About Us section with team members and project description."""
     team = [
@@ -3459,9 +3476,10 @@ def about_us_section() -> str:
       </div>
     </section>
     """
- 
- 
+
+
 def top_navigation(active_view: str, active_tag: str = "") -> str:
+    home_href = app_link("Home")
     items = [
         ("Overview", "Overview"),
         ("Explore Library", "Explore"),
@@ -3482,18 +3500,19 @@ def top_navigation(active_view: str, active_tag: str = "") -> str:
         tag_note = f'Tag aktif: {esc(active_tag)}' if active_tag else 'Same-tab navigation'
     return (
         '<nav class="top-nav-shell" aria-label="Main navigation">'
-        f'<a class="top-nav-brand" href="{app_link("Overview")}" target="_top"><span class="top-nav-logo"><img src="{LOGO_SRC}" alt="SteamVault logo"></span>SteamVault Pro</a>'
+        f'<a class="top-nav-brand" href="{home_href}" target="_top"><span class="top-nav-logo"><img src="{LOGO_SRC}" alt="SteamVault logo"></span>SteamVault Pro</a>'
         f'<div class="top-nav-links">{"".join(links)}<div class="top-nav-meta">{tag_note}</div></div>'
+        f'<a class="top-nav-link home-btn" href="{home_href}" target="_top">← Home</a>'
         '</nav>'
     )
- 
+
 # -----------------------------------------------------------------------------
 # Main app
 # -----------------------------------------------------------------------------
 inject_css()
- 
+
 render_sidebar_brand()
- 
+
 try:
     if DEFAULT_CSV.exists():
         games = load_games_from_path(str(DEFAULT_CSV))
@@ -3504,23 +3523,23 @@ try:
 except Exception as exc:
     st.error(f"Gagal membaca dataset: {exc}")
     st.stop()
- 
+
 # Simplified public experience: no upload workflow in the UI.
 interactions = None
- 
+
 vectorizer, tfidf_matrix = build_tfidf(tuple(games["content_text"].tolist()))
 all_titles = sorted(games["name"].dropna().astype(str).unique().tolist())
 all_genres = sorted([g for g in games["genre_primary"].dropna().unique().tolist() if g and g != "Unknown"])
 all_tags = top_values_from_lists(games, "tag_list", limit=120)
- 
-NAV_OPTIONS = ["Overview", "Explore", "Recommend", "Detail", "About"]
-active_view = match_known_value(query_value("view", "Overview"), NAV_OPTIONS)
+
+NAV_OPTIONS = ["Home", "Overview", "Explore", "Recommend", "Detail", "About"]
+active_view = match_known_value(query_value("view", "Home"), NAV_OPTIONS)
 if active_view not in NAV_OPTIONS:
-    active_view = "Overview"
+    active_view = "Home"
 active_tag = match_known_value(query_value("tag", ""), all_tags)
 active_tag_default = [active_tag] if active_tag in all_tags else []
- 
-# Sidebar global filters
+
+# Sidebar global filters — always computed so sub-pages can use them
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Discovery tuning")
 years = games["year"].dropna()
@@ -3544,10 +3563,17 @@ global_tags = st.sidebar.multiselect(
 global_mode = st.sidebar.selectbox("Mode bermain", ["any", "singleplayer", "multiplayer", "coop"])
 global_search = st.sidebar.text_input("Cari game")
 filtered = apply_global_filters(games, year_range, global_price, global_min_pos, global_genres, global_tags, global_mode, global_search)
- 
-render_html(top_navigation(active_view, active_tag))
+
 nav_view = active_view
- 
+
+# ── HOME: hero only, no nav, no content ──────────────────────────────────────
+if nav_view == "Home":
+    render_html(hero_section(len(games), len(filtered), data_source))
+    st.stop()
+
+# ── ALL OTHER VIEWS: show navbar, no hero ────────────────────────────────────
+render_html(top_navigation(active_view, active_tag))
+
 if nav_view == "Detail":
     render_html('<span id="content-start"></span>')
     detail_row = find_game_by_key(games, query_value("game", ""))
@@ -3556,23 +3582,12 @@ if nav_view == "Detail":
         st.stop()
     render_game_detail(detail_row, games, tfidf_matrix, active_tag=active_tag)
     st.stop()
- 
-# Show hero section only on the landing/root-equivalent view (Overview)
-# For sub-pages (Explore, Recommend, About), skip the hero
-is_landing = (nav_view == "Overview")
-if is_landing:
-    render_html(hero_section(len(games), len(filtered), data_source))
- 
-render_html(
-    """
-    <div id="content-start" class="nav-intro">
-      <span>Navigation ready</span>
-      <b>Poster dan judul membuka halaman detail di tab yang sama. Tombol Steam tersedia di halaman detail.</b>
-    </div>
-    """
-)
- 
-if active_tag:
+
+# nav-intro ("Navigation ready") only on non-About pages
+if nav_view != "About":
+    render_html('<span id="content-start"></span>')
+
+if active_tag and nav_view != "About":
     render_html(
         f"""
         <div class="active-filter-card">
@@ -3581,16 +3596,17 @@ if active_tag:
         </div>
         """
     )
- 
-st.caption(f"Data source: {data_source} | Jumlah data: {len(games):,} game | Setelah filter: {len(filtered):,} game")
- 
-kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
-kpi1.metric("Library size", f"{len(games):,}")
-kpi2.metric("Active results", f"{len(filtered):,}")
-kpi3.metric("Free titles", f"{int(filtered['is_free'].sum()):,}" if not filtered.empty else "0")
-kpi4.metric("Average positivity", fmt_float(filtered["positivity"].mean() if not filtered.empty else np.nan, 1, "%"))
-kpi5.metric("Quality index", fmt_float((filtered["quality_score"].mean() * 100) if not filtered.empty else np.nan, 1))
- 
+
+# KPI cards — show only on Overview and Explore, NOT on About/Recommend
+if nav_view in ("Overview", "Explore"):
+    st.caption(f"Data source: {data_source} | Jumlah data: {len(games):,} game | Setelah filter: {len(filtered):,} game")
+    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
+    kpi1.metric("Library size", f"{len(games):,}")
+    kpi2.metric("Active results", f"{len(filtered):,}")
+    kpi3.metric("Free titles", f"{int(filtered['is_free'].sum()):,}" if not filtered.empty else "0")
+    kpi4.metric("Average positivity", fmt_float(filtered["positivity"].mean() if not filtered.empty else np.nan, 1, "%"))
+    kpi5.metric("Quality index", fmt_float((filtered["quality_score"].mean() * 100) if not filtered.empty else np.nan, 1))
+
 if nav_view == "Overview":
     render_html(feature_strip())
     render_html(section_header("Library intelligence", "overview dataset"))
@@ -3609,7 +3625,7 @@ if nav_view == "Overview":
                 fig = px.bar(top_tags, x="count", y="tag", orientation="h", title="Top tag paling sering muncul", labels={"count": "Jumlah", "tag": "Tag"})
                 fig.update_yaxes(categoryorder="total ascending")
                 st.plotly_chart(clean_plotly(fig, height=430), width="stretch")
- 
+
         c3, c4 = st.columns(2)
         with c3:
             price_df = filtered[filtered["price_effective"].notna()].copy()
@@ -3629,7 +3645,7 @@ if nav_view == "Overview":
                 labels={"positivity": "Positivity (%)", "display_score": "Quality score", "review_volume_log": "Log reviews", "genre_primary": "Genre"},
             )
             st.plotly_chart(clean_plotly(fig, height=340), width="stretch")
- 
+
         render_html(section_header("Fast picks", "quality, value, and player favorites"))
         pick_cols = st.columns(3)
         used_quick_names: set[str] = set()
@@ -3642,7 +3658,7 @@ if nav_view == "Overview":
             with col:
                 render_html(f"<div class='glass-panel'><b>{esc(label)}</b></div>")
                 render_cards(data, games, columns=1, active_tag=active_tag)
- 
+
 elif nav_view == "Explore":
     render_html('<span id="explore"></span>' + section_header("Game explorer", "browse, filter, and discover similar games"))
     render_html("<div class='mini-note'>Klik poster atau judul game untuk masuk ke halaman detail di tab yang sama. Tombol Steam tersedia di halaman detail game.</div>")
@@ -3659,13 +3675,13 @@ elif nav_view == "Explore":
         n_show = e3.slider("Jumlah kartu", 6, 60, 18, 3)
         browse = filtered.sort_values(sort_col, ascending=sort_asc, na_position="last").head(n_show)
         render_cards(browse, games, columns=3, active_tag=active_tag)
- 
+
 elif nav_view == "Recommend":
     render_html('<span id="recommender"></span>' + section_header("Smart recommender", "hybrid, explainable, configurable"))
     render_html(
         "<div class='mini-note'>Tips: pilih 1-5 game favorit atau beberapa tag/genre. Jika tidak ada input favorit, sistem otomatis memilih berdasarkan filter, harga, dan ulasan pemain.</div>"
     )
- 
+
     MOODS = {
         "Tanpa preset": [],
         "Story rich & singleplayer": ["Story Rich", "Singleplayer", "RPG", "Adventure", "Atmospheric"],
@@ -3674,14 +3690,12 @@ elif nav_view == "Recommend":
         "Strategy deep dive": ["Strategy", "Simulation", "Turn-Based", "Management", "Tactical"],
         "Budget friendly": ["Free to Play", "Indie", "Casual", "Co-op"],
     }
- 
+
+    # Hybrid only — engine fixed
+    engine = "Smart Hybrid"
+
     r1, r2 = st.columns([1.05, 0.95])
     with r1:
-        engine = st.selectbox(
-            "Engine rekomendasi",
-            ["Smart Hybrid", "Content-Based", "Rule-Based", "Collaborative / Ulasan Pemain"],
-            help="Smart Hybrid menggabungkan beberapa sinyal. Mode kolaboratif memakai data interaksi jika diupload; kalau tidak, memakai ulasan dan popularitas pemain sebagai pengganti.",
-        )
         favorite_titles = st.multiselect("Game favorit / referensi", all_titles, max_selections=5)
         preferred_genres = st.multiselect("Genre preferensi", all_genres, max_selections=5)
         preferred_tags = st.multiselect("Tag preferensi", all_tags, max_selections=10)
@@ -3695,17 +3709,16 @@ elif nav_view == "Recommend":
         must_have_tags = st.multiselect("Tag wajib", all_tags, max_selections=4)
         top_n = st.slider("Jumlah rekomendasi", 5, 30, 12)
         diversity = st.slider("Diversity penalty", 0.0, 0.60, 0.18, 0.02, help="Lebih tinggi = hasil lebih beragam, mengurangi game yang terlalu mirip satu sama lain.")
- 
+
     weights = {"content": 0.42, "crowd": 0.27, "rule": 0.16, "value": 0.10, "novelty": 0.05}
-    if engine == "Smart Hybrid":
-        with st.expander("Atur bobot hybrid", expanded=False):
-            w1, w2, w3, w4, w5 = st.columns(5)
-            weights["content"] = w1.slider("Content", 0.0, 1.0, weights["content"], 0.05)
-            weights["crowd"] = w2.slider("Ulasan/CF", 0.0, 1.0, weights["crowd"], 0.05)
-            weights["rule"] = w3.slider("Rule", 0.0, 1.0, weights["rule"], 0.05)
-            weights["value"] = w4.slider("Value", 0.0, 1.0, weights["value"], 0.05)
-            weights["novelty"] = w5.slider("Novelty", 0.0, 1.0, weights["novelty"], 0.05)
- 
+    with st.expander("Atur bobot hybrid", expanded=False):
+        w1, w2, w3, w4, w5 = st.columns(5)
+        weights["content"] = w1.slider("Content", 0.0, 1.0, weights["content"], 0.05)
+        weights["crowd"] = w2.slider("Ulasan/CF", 0.0, 1.0, weights["crowd"], 0.05)
+        weights["rule"] = w3.slider("Rule", 0.0, 1.0, weights["rule"], 0.05)
+        weights["value"] = w4.slider("Value", 0.0, 1.0, weights["value"], 0.05)
+        weights["novelty"] = w5.slider("Novelty", 0.0, 1.0, weights["novelty"], 0.05)
+
     recs = recommend_games(
         games=games,
         matrix=tfidf_matrix,
@@ -3725,7 +3738,7 @@ elif nav_view == "Recommend":
         weights=weights,
         interactions=interactions,
     )
- 
+
     if recs.empty:
         st.warning("Tidak ada rekomendasi yang cocok. Turunkan minimal positivity, review, harga, atau tag wajib.")
     else:
@@ -3734,20 +3747,19 @@ elif nav_view == "Recommend":
             f"<div class='mini-note'><b>Engine aktif:</b> {esc(engine)} | <b>Sumber sinyal pemain:</b> {esc(source_label)} | Hasil sudah direrank dengan diversity penalty.</div>"
         )
         render_cards(recs, games, favorite_titles, preferred_tags, columns=3, show_components=True, active_tag=active_tag)
- 
+
         st.markdown("### Score breakdown")
         chart_df = recs.head(10)[["name", "content_component", "crowd_component", "rule_component", "value_component", "novelty_component", "final_score"]].copy()
         chart_long = chart_df.melt(id_vars="name", var_name="component", value_name="score")
         fig = px.bar(chart_long, x="score", y="name", color="component", orientation="h", barmode="group", title="Komponen skor top recommendation", labels={"score": "Skor 0-1", "name": "Game"})
         fig.update_yaxes(categoryorder="total ascending")
         st.plotly_chart(clean_plotly(fig, height=470), width="stretch")
- 
+
 elif nav_view == "About":
     render_html('<span id="about-us"></span>')
     render_html(about_us_section())
- 
+
 # Always show About Us anchor at the bottom of Overview too
 if nav_view == "Overview":
     render_html('<span id="about-us"></span>')
     render_html(about_us_section())
- 
