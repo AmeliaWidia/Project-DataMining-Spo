@@ -621,18 +621,34 @@ def inject_css() -> None:
             box-shadow: 0 12px 24px rgba(0,0,0,.22);
         }
         .mock-line b, .mock-line span { display: block; }
-        .mock-line b { color: #fff !important; font-size: .88rem; margin-bottom: 5px; }
+        .mock-line b { color: #fff !important; font-size: .88rem; margin-bottom: 3px; }
         .mock-line span { color: var(--muted) !important; font-size: .74rem; }
+        .mock-line .mock-label { display: block; color: var(--gold) !important; font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; margin-top: 2px; }
         .mock-score {
-            display: grid;
-            place-items: center;
-            width: 50px;
-            height: 34px;
-            border-radius: 999px;
-            color: var(--gold) !important;
+            margin-left: auto;
+            flex-shrink: 0;
+            text-align: center;
+            min-width: 52px;
+        }
+        .mock-score .mock-num {
+            display: block;
+            font-size: 1.35rem;
             font-weight: 950;
-            background: rgba(253,199,135,.10);
-            border: 1px solid rgba(253,199,135,.25);
+            color: var(--gold) !important;
+            letter-spacing: -.04em;
+            line-height: 1.1;
+        }
+        .mock-score .mock-badge {
+            display: inline-block;
+            margin-top: 3px;
+            font-size: .58rem;
+            font-weight: 800;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            color: rgba(165,197,204,.85) !important;
+            border: 1px solid rgba(165,197,204,.22);
+            border-radius: 999px;
+            padding: 1px 5px;
         }
         .hero-stats {
             display: grid;
@@ -2122,16 +2138,16 @@ def inject_css() -> None:
             border-color: rgba(253,199,135,.32);
         }
         .team-avatar {
-            width: 52px; height: 52px;
-            border-radius: 18px;
+            width: 76px; height: 76px;
+            border-radius: 50%;
+            overflow: hidden;
             display: grid;
             place-items: center;
             margin-bottom: 14px;
-            font-size: 1.35rem;
-            background: linear-gradient(135deg, rgba(253,199,135,.18), rgba(39,90,145,.30));
-            border: 1px solid rgba(253,199,135,.22);
-            box-shadow: 0 0 26px rgba(253,199,135,.12);
+            border: 2px solid rgba(253,199,135,.32);
+            box-shadow: 0 0 28px rgba(253,199,135,.20);
         }
+        .team-avatar svg { display: block; }
         .team-name {
             display: block;
             color: #fff !important;
@@ -2149,20 +2165,7 @@ def inject_css() -> None:
             text-transform: uppercase;
             margin-bottom: 10px;
         }
-        .team-desc {
-            color: var(--muted) !important;
-            font-size: .80rem;
-            line-height: 1.50;
-        }
-        .about-project {
-            margin-top: 28px;
-            padding: 18px 20px;
-            border-radius: 22px;
-            background: rgba(165,197,204,.055);
-            border: 1px solid rgba(165,197,204,.13);
-        }
-        .about-project b { color: var(--gold) !important; }
-        .about-project p { color: var(--text-soft) !important; margin: 7px 0 0; font-size: .86rem; line-height: 1.62; }
+
 
         </style>
         """
@@ -3325,6 +3328,141 @@ def safe_top_tags(df: pd.DataFrame, n: int = 20) -> pd.DataFrame:
     return pd.DataFrame(counter.most_common(n), columns=["tag", "count"])
 
 
+def premium_palette(count: int) -> list[str]:
+    base = ["#FDC787", "#A5C5CC", "#6FA9C1", "#4E82B4", "#275A91", "#1A4578"]
+    if count <= len(base):
+        return base[:count]
+    return [base[i % len(base)] for i in range(count)]
+
+
+def polish_plotly(fig: go.Figure, height: int = 360) -> go.Figure:
+    fig = clean_plotly(fig, height=height)
+    fig.update_layout(
+        hoverlabel=dict(bgcolor="rgba(2,19,52,0.94)", bordercolor="rgba(253,199,135,0.32)", font=dict(color="#EEF8FA")),
+        legend=dict(
+            bgcolor="rgba(2,19,52,0.18)",
+            bordercolor="rgba(165,197,204,0.14)",
+            borderwidth=1,
+            title_font=dict(color="#A5C5CC"),
+            font=dict(color="#C7DCE2"),
+        ),
+        margin=dict(l=18, r=18, t=64, b=20),
+    )
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor="rgba(165,197,204,0.10)",
+        zeroline=False,
+        linecolor="rgba(165,197,204,0.18)",
+        tickfont=dict(color="#C7DCE2"),
+        title_font=dict(color="#A5C5CC"),
+    )
+    fig.update_yaxes(
+        showgrid=False,
+        zeroline=False,
+        linecolor="rgba(165,197,204,0.18)",
+        tickfont=dict(color="#C7DCE2"),
+        title_font=dict(color="#A5C5CC"),
+    )
+    return fig
+
+
+def premium_rank_bar(
+    df: pd.DataFrame,
+    value_col: str,
+    label_col: str,
+    title: str,
+    x_label: str,
+    y_label: str,
+    height: int = 430,
+) -> go.Figure:
+    chart_df = df.copy().sort_values(value_col, ascending=True)
+    colors = premium_palette(len(chart_df))
+    colors = list(reversed(colors))
+    fig = go.Figure(
+        go.Bar(
+            x=chart_df[value_col],
+            y=chart_df[label_col],
+            orientation="h",
+            marker=dict(
+                color=colors,
+                line=dict(color="rgba(253,199,135,0.28)", width=1.2),
+            ),
+            text=chart_df[value_col].map(lambda v: f"{int(v):,}"),
+            textposition="outside",
+            hovertemplate="%{y}<br>%{x:,}<extra></extra>",
+        )
+    )
+    fig.update_layout(title=title, showlegend=False)
+    fig.update_xaxes(title=x_label)
+    fig.update_yaxes(title=y_label)
+    return polish_plotly(fig, height=height)
+
+
+def premium_price_histogram(price_df: pd.DataFrame, height: int = 340) -> go.Figure:
+    values = price_df["price_effective"].dropna().astype(float)
+    fig = go.Figure(
+        go.Histogram(
+            x=values,
+            nbinsx=24,
+            marker=dict(color="rgba(165,197,204,0.68)", line=dict(color="#FDC787", width=1.2)),
+            hovertemplate="Harga $%{x:.2f}<br>Jumlah %{y}<extra></extra>",
+        )
+    )
+    if len(values):
+        mean_price = float(values.mean())
+        fig.add_vline(
+            x=mean_price,
+            line_width=2,
+            line_color="#FDC787",
+            line_dash="dash",
+            annotation_text=f"Rata-rata ${mean_price:.1f}",
+            annotation_position="top right",
+            annotation_font=dict(color="#FDC787"),
+        )
+    fig.update_layout(title="Distribusi harga", showlegend=False)
+    fig.update_xaxes(title="Harga efektif ($)")
+    fig.update_yaxes(title="Jumlah game")
+    return polish_plotly(fig, height=height)
+
+
+def premium_quality_scatter(scatter_df: pd.DataFrame, height: int = 340) -> go.Figure:
+    plot_df = scatter_df.copy()
+    plot_df["bubble_size"] = np.clip(np.sqrt(plot_df["review_volume"].fillna(0) + 1), 6, 32)
+    fig = px.scatter(
+        plot_df,
+        x="positivity",
+        y="display_score",
+        size="bubble_size",
+        color="display_score",
+        hover_name="name",
+        hover_data={
+            "genre_primary": True,
+            "review_volume": ':,',
+            "price_effective": ':.2f',
+            "bubble_size": False,
+            "display_score": ':.1f',
+            "positivity": ':.1f',
+        },
+        color_continuous_scale=[(0.0, "#275A91"), (0.55, "#A5C5CC"), (1.0, "#FDC787")],
+        labels={
+            "positivity": "Positivity (%)",
+            "display_score": "Quality score",
+            "genre_primary": "Genre",
+            "review_volume": "Reviews",
+            "price_effective": "Harga ($)",
+        },
+        title="Positivity vs quality score",
+    )
+    fig.update_traces(
+        marker=dict(opacity=0.78, line=dict(color="rgba(238,248,250,0.16)", width=1.1)),
+        selector=dict(mode="markers"),
+    )
+    fig.update_layout(coloraxis_colorbar=dict(title="Quality"))
+    fig.update_xaxes(title="Positivity (%)")
+    fig.update_yaxes(title="Quality score")
+    return polish_plotly(fig, height=height)
+
+
 
 def top_unique_games(df: pd.DataFrame, sort_col: str, used_names: set[str], n: int = 3) -> pd.DataFrame:
     """Pick top games while avoiding repeated titles across quick-pick panels."""
@@ -3400,22 +3538,22 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
               <div class="mock-img mock-icon-wrap">
                 <svg viewBox='0 0 24 24' class='mock-icon' aria-hidden='true'><path d='M12 3l7 3v5c0 4.7-2.9 8.3-7 10-4.1-1.7-7-5.3-7-10V6l7-3z'/><path d='M9.2 12.2l1.8 1.8 4-4.4'/></svg>
               </div>
-              <div class="mock-line"><b>Quality signal</b><span>review positif + banyak peminat</span></div>
-              <div class="mock-score">92</div>
+              <div class="mock-line"><b>Quality signal</b><span>92% trusted</span><span class="mock-label">Community Approved</span></div>
+              <div class="mock-score"><span class="mock-num">92</span><span class="mock-badge">trusted</span></div>
             </div>
             <div class="mock-row two">
               <div class="mock-img mock-icon-wrap">
                 <svg viewBox='0 0 24 24' class='mock-icon' aria-hidden='true'><circle cx='12' cy='12' r='7.5'/><circle cx='12' cy='12' r='3.2'/><path d='M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3'/></svg>
               </div>
-              <div class="mock-line"><b>Content match</b><span>genre, tag, dan deskripsi</span></div>
-              <div class="mock-score">88</div>
+              <div class="mock-line"><b>Content match</b><span>88% match</span><span class="mock-label">Taste Match</span></div>
+              <div class="mock-score"><span class="mock-num">88</span><span class="mock-badge">match</span></div>
             </div>
             <div class="mock-row three">
               <div class="mock-img mock-icon-wrap">
                 <svg viewBox='0 0 24 24' class='mock-icon' aria-hidden='true'><path d='M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z'/><path d='M18.4 15.3l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9.9-2.4z'/></svg>
               </div>
-              <div class="mock-line"><b>Hybrid engine</b><span>selera + ulasan + harga + variasi</span></div>
-              <div class="mock-score">95</div>
+              <div class="mock-line"><b>Hybrid engine</b><span>95% optimized</span><span class="mock-label">Smart Optimized</span></div>
+              <div class="mock-score"><span class="mock-num">95</span><span class="mock-badge">optimized</span></div>
             </div>
           </div>
         </div>
@@ -3430,9 +3568,9 @@ def feature_strip() -> str:
         "spark": """<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z'/><path d='M18.4 15.3l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9.9-2.4z'/></svg>""",
     }
     items = [
-        ("Quality signal", "Shielded quality cues from positivity, popularity, playtime, and value so strong games surface faster.", icons["shield"], ""),
-        ("Content match", "Tag, genre, category, and description signals help the platform understand the kind of atmosphere you want.", icons["target"], " alt"),
-        ("Hybrid engine", "A polished blend of taste, player response, rules, value, and discovery diversity for richer recommendations.", icons["spark"], ""),
+        ("Quality signal", "92% trusted — Community Approved. Sinyal kualitas dari positivity, popularitas, playtime, dan value.", icons["shield"], ""),
+        ("Content match", "88% match — Taste Match. Tag, genre, kategori, dan deskripsi menangkap suasana yang kamu mau.", icons["target"], " alt"),
+        ("Hybrid engine", "95% optimized — Smart Optimized. Perpaduan selera, ulasan pemain, aturan, value, dan diversity.", icons["spark"], ""),
     ]
     cards = "".join(
         f"""
@@ -3448,31 +3586,44 @@ def feature_strip() -> str:
 def section_header(title: str, subtitle: str = "") -> str:
     return f'<div class="section-title"><h3>{esc(title)}</h3><span>{esc(subtitle)}</span></div>'
 
+def _avatar_from_assets(filename: str, initials: str, bg: str) -> str:
+    """Load photo from assets/ folder as base64. Falls back to SVG initials if file not found."""
+    import base64, mimetypes
+    assets_dir = Path(__file__).parent / "assets"
+    filepath = assets_dir / filename
+    if filepath.exists():
+        mime = mimetypes.guess_type(str(filepath))[0] or "image/jpeg"
+        b64 = base64.b64encode(filepath.read_bytes()).decode()
+        return f'<img src="data:{mime};base64,{b64}" alt="{initials}" style="width:76px;height:76px;object-fit:cover;border-radius:50%;">'
+    # Fallback: SVG inisial
+    return (
+        f'<svg viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg" width="76" height="76">'
+        f'<circle cx="38" cy="38" r="38" fill="{bg}"/>'
+        f'<text x="38" y="46" text-anchor="middle" font-family="Inter,system-ui,sans-serif" '
+        f'font-size="24" font-weight="800" fill="#EEF8FA" letter-spacing="-0.03em">{initials}</text>'
+        f'</svg>'
+    )
+
 def about_us_section() -> str:
-    """Render the About Us section with team members and project description."""
+    """Render the About Us section — foto dari assets/, fallback ke SVG inisial."""
     team = [
-        ("🎮", "Sharliz Mayalpen Zafirah", "5052241003", ""),
-        ("🎨", "Amelia Widiastuti", "5052241007", ""),
-        ("📊", "Marvelio Jonathan Wijaya", "5052241017", ""),
+        # (nama_file_di_assets, inisial_fallback, nama, NIM, warna_fallback)
+        ("sharliz.jpg", "SM", "Sharliz Mayalpen Zafirah", "5052241003", "#1A4A7A"),
+        ("amelia.jpg",  "AW", "Amelia Widiastuti",        "5052241007", "#4A2060"),
+        ("marvelio.jpg","MJ", "Marvelio Jonathan Wijaya", "5052241017", "#0E4D3A"),
     ]
     cards = "".join(f"""
     <div class="team-card">
-      <div class="team-avatar">{emoji}</div>
+      <div class="team-avatar">{_avatar_from_assets(fname, initials, bg)}</div>
       <span class="team-name">{esc(name)}</span>
       <span class="team-role">{esc(role)}</span>
-      <p class="team-desc">{esc(desc)}</p>
     </div>
-    """ for emoji, name, role, desc in team)
+    """ for fname, initials, name, role, bg in team)
     return f"""
     <section class="about-section">
       <div class="about-kicker">Tim Pengembang</div>
       <h2>About Us</h2>
-      <p>SteamVault Pro adalah project eksplorasi game Steam dengan pendekatan cinematic dan rekomendasi hybrid yang transparan. Dibuat oleh tim mahasiswa yang bersemangat tentang game, data, dan desain UI berkualitas tinggi.</p>
       <div class="team-grid">{cards}</div>
-      <div class="about-project">
-        <b>Tentang Project</b>
-        <p>SteamVault Pro membangun sistem rekomendasi hybrid yang menggabungkan sinyal content-based (TF-IDF pada tag, genre, deskripsi), collaborative filtering berbasis ulasan pemain, rule-based filter (harga, mode, rating), dan diversity penalty — semua dijelaskan secara transparan kepada pengguna. Dataset aktif: <b>steam_top_games_2026.csv</b>.</p>
-      </div>
     </section>
     """
 
@@ -3614,36 +3765,42 @@ if nav_view == "Overview":
     else:
         c1, c2 = st.columns([1.12, 0.88])
         with c1:
-            genre_count = filtered.groupby("genre_primary", as_index=False).size().sort_values("size", ascending=False).head(14)
-            fig = px.bar(genre_count, x="size", y="genre_primary", orientation="h", title="Top genre berdasarkan jumlah game", labels={"size": "Jumlah", "genre_primary": "Genre"})
-            fig.update_yaxes(categoryorder="total ascending")
-            st.plotly_chart(clean_plotly(fig, height=430), width="stretch")
+            genre_count = filtered.groupby("genre_primary", as_index=False).size().sort_values("size", ascending=False).head(12)
+            st.plotly_chart(
+                premium_rank_bar(
+                    genre_count,
+                    value_col="size",
+                    label_col="genre_primary",
+                    title="Top genre berdasarkan jumlah game",
+                    x_label="Jumlah game",
+                    y_label="Genre",
+                    height=430,
+                ),
+                width="stretch",
+            )
         with c2:
-            top_tags = safe_top_tags(filtered, 14)
+            top_tags = safe_top_tags(filtered, 12)
             if not top_tags.empty:
-                fig = px.bar(top_tags, x="count", y="tag", orientation="h", title="Top tag paling sering muncul", labels={"count": "Jumlah", "tag": "Tag"})
-                fig.update_yaxes(categoryorder="total ascending")
-                st.plotly_chart(clean_plotly(fig, height=430), width="stretch")
+                st.plotly_chart(
+                    premium_rank_bar(
+                        top_tags,
+                        value_col="count",
+                        label_col="tag",
+                        title="Top tag paling sering muncul",
+                        x_label="Jumlah kemunculan",
+                        y_label="Tag",
+                        height=430,
+                    ),
+                    width="stretch",
+                )
 
         c3, c4 = st.columns(2)
         with c3:
             price_df = filtered[filtered["price_effective"].notna()].copy()
-            fig = px.histogram(price_df, x="price_effective", nbins=30, title="Distribusi harga", labels={"price_effective": "Harga efektif ($)", "count": "Jumlah"})
-            st.plotly_chart(clean_plotly(fig, height=340), width="stretch")
+            st.plotly_chart(premium_price_histogram(price_df, height=340), width="stretch")
         with c4:
             scatter = filtered.copy()
-            scatter["review_volume_log"] = np.log10(scatter["review_volume"].fillna(0) + 1)
-            fig = px.scatter(
-                scatter,
-                x="positivity",
-                y="display_score",
-                size="review_volume_log",
-                color="genre_primary",
-                hover_name="name",
-                title="Positivity vs quality score",
-                labels={"positivity": "Positivity (%)", "display_score": "Quality score", "review_volume_log": "Log reviews", "genre_primary": "Genre"},
-            )
-            st.plotly_chart(clean_plotly(fig, height=340), width="stretch")
+            st.plotly_chart(premium_quality_scatter(scatter, height=340), width="stretch")
 
         render_html(section_header("Fast picks", "quality, value, and player favorites"))
         pick_cols = st.columns(3)
@@ -3676,9 +3833,9 @@ elif nav_view == "Explore":
         render_cards(browse, games, columns=3, active_tag=active_tag)
 
 elif nav_view == "Recommend":
-    render_html('<span id="recommender"></span>' + section_header("Smart recommender", "hybrid, explainable, configurable"))
+    render_html('<span id="recommender"></span>' + section_header("Game recommendations", "simple, premium, and tailored to your taste"))
     render_html(
-        "<div class='mini-note'>Tips: pilih 1-5 game favorit atau beberapa tag/genre. Jika tidak ada input favorit, sistem otomatis memilih berdasarkan filter, harga, dan ulasan pemain.</div>"
+        "<div class='mini-note'>Mulai dari mode rekomendasi yang simpel, lalu tambahkan favorit, genre, atau tag untuk membuat hasil makin personal.</div>"
     )
 
     MOODS = {
@@ -3689,11 +3846,43 @@ elif nav_view == "Recommend":
         "Strategy deep dive": ["Strategy", "Simulation", "Turn-Based", "Management", "Tactical"],
         "Budget friendly": ["Free to Play", "Indie", "Casual", "Co-op"],
     }
+    REC_MODE_PRESETS = {
+        "Popular": {
+            "desc": "Mengutamakan game yang paling aman, ramai dimainkan, dan punya sinyal kualitas kuat.",
+            "weights": {"content": 0.16, "crowd": 0.42, "rule": 0.14, "value": 0.18, "novelty": 0.10},
+            "diversity": 0.10,
+            "min_pos": 75,
+            "min_reviews": 800,
+        },
+        "Balanced": {
+            "desc": "Campuran seimbang antara kecocokan selera, reputasi pemain, dan value.",
+            "weights": {"content": 0.42, "crowd": 0.27, "rule": 0.16, "value": 0.10, "novelty": 0.05},
+            "diversity": 0.18,
+            "min_pos": 65,
+            "min_reviews": 250,
+        },
+        "Personalized": {
+            "desc": "Lebih fokus ke game yang mirip dengan preferensi, tag, dan favorit yang kamu pilih.",
+            "weights": {"content": 0.50, "crowd": 0.16, "rule": 0.16, "value": 0.08, "novelty": 0.10},
+            "diversity": 0.16,
+            "min_pos": 60,
+            "min_reviews": 150,
+        },
+        "Hidden Gems": {
+            "desc": "Mencari game yang kuat secara kualitas tapi lebih unik dan tidak terlalu mainstream.",
+            "weights": {"content": 0.26, "crowd": 0.12, "rule": 0.16, "value": 0.12, "novelty": 0.34},
+            "diversity": 0.28,
+            "min_pos": 60,
+            "min_reviews": 40,
+        },
+    }
 
-    # Hybrid only — engine fixed
     engine = "Smart Hybrid"
+    recommendation_mode = st.radio("Recommendation mode", list(REC_MODE_PRESETS.keys()), horizontal=True)
+    mode_preset = REC_MODE_PRESETS[recommendation_mode]
+    render_html(f"<div class='glass-panel'><b>{esc(recommendation_mode)}</b><br><span class='muted'>{esc(mode_preset['desc'])}</span></div>")
 
-    r1, r2 = st.columns([1.05, 0.95])
+    r1, r2 = st.columns([1.08, 0.92])
     with r1:
         favorite_titles = st.multiselect("Game favorit / referensi", all_titles, max_selections=5)
         preferred_genres = st.multiselect("Genre preferensi", all_genres, max_selections=5)
@@ -3701,22 +3890,32 @@ elif nav_view == "Recommend":
         mood_name = st.selectbox("Mood preset", list(MOODS.keys()))
         mood_terms = MOODS[mood_name]
     with r2:
-        max_price = st.slider("Maksimum harga rekomendasi ($)", 0.0, float(math.ceil(price_limit_global)), min(45.0, float(math.ceil(price_limit_global))), 1.0)
-        min_pos = st.slider("Minimal positivity rekomendasi (%)", 0, 100, 65)
-        min_reviews = st.slider("Minimal review/recommendation", 0, 100000, 250, 250)
-        mode = st.selectbox("Mode bermain", ["any", "singleplayer", "multiplayer", "coop"])
-        must_have_tags = st.multiselect("Tag wajib", all_tags, max_selections=4)
-        top_n = st.slider("Jumlah rekomendasi", 5, 30, 12)
-        diversity = st.slider("Diversity penalty", 0.0, 0.60, 0.18, 0.02, help="Lebih tinggi = hasil lebih beragam, mengurangi game yang terlalu mirip satu sama lain.")
+        max_price = st.slider("Budget maksimum ($)", 0.0, float(math.ceil(price_limit_global)), min(45.0, float(math.ceil(price_limit_global))), 1.0)
+        mode = st.selectbox("Mode bermain", ["any", "singleplayer", "multiplayer", "coop"], format_func=lambda x: {"any": "Any", "singleplayer": "Singleplayer", "multiplayer": "Multiplayer", "coop": "Co-op"}[x])
+        top_n = st.slider("Jumlah rekomendasi", 6, 24, 12, 2)
 
-    weights = {"content": 0.42, "crowd": 0.27, "rule": 0.16, "value": 0.10, "novelty": 0.05}
-    with st.expander("Atur bobot hybrid", expanded=False):
-        w1, w2, w3, w4, w5 = st.columns(5)
-        weights["content"] = w1.slider("Content", 0.0, 1.0, weights["content"], 0.05)
-        weights["crowd"] = w2.slider("Ulasan/CF", 0.0, 1.0, weights["crowd"], 0.05)
-        weights["rule"] = w3.slider("Rule", 0.0, 1.0, weights["rule"], 0.05)
-        weights["value"] = w4.slider("Value", 0.0, 1.0, weights["value"], 0.05)
-        weights["novelty"] = w5.slider("Novelty", 0.0, 1.0, weights["novelty"], 0.05)
+    advanced_defaults = mode_preset["weights"].copy()
+    min_pos = int(mode_preset["min_pos"])
+    min_reviews = int(mode_preset["min_reviews"])
+    must_have_tags: list[str] = []
+    diversity = float(mode_preset["diversity"])
+    weights = advanced_defaults.copy()
+
+    with st.expander("Advanced AI Settings", expanded=False):
+        render_html("<div class='mini-note'>Untuk power users: atur bobot mesin rekomendasi dan filter teknis di sini. Default mode di atas sudah cukup untuk sebagian besar user.</div>")
+        a1, a2, a3 = st.columns(3)
+        with a1:
+            min_pos = st.slider("Minimal positivity (%)", 0, 100, int(mode_preset["min_pos"]))
+            weights["content"] = st.slider("Content weight", 0.0, 1.0, float(advanced_defaults["content"]), 0.05)
+            weights["value"] = st.slider("Value weight", 0.0, 1.0, float(advanced_defaults["value"]), 0.05)
+        with a2:
+            min_reviews = st.slider("Minimal reviews", 0, 100000, int(mode_preset["min_reviews"]), 50)
+            weights["crowd"] = st.slider("Collaborative Filtering weight", 0.0, 1.0, float(advanced_defaults["crowd"]), 0.05)
+            weights["novelty"] = st.slider("Novelty", 0.0, 1.0, float(advanced_defaults["novelty"]), 0.05)
+        with a3:
+            must_have_tags = st.multiselect("Must-have tags", all_tags, max_selections=4)
+            diversity = st.slider("Diversity penalty", 0.0, 0.60, float(mode_preset["diversity"]), 0.02, help="Lebih tinggi = hasil lebih beragam dan tidak terlalu mirip satu sama lain.")
+            weights["rule"] = st.slider("Rule weight", 0.0, 1.0, float(advanced_defaults["rule"]), 0.05)
 
     recs = recommend_games(
         games=games,
@@ -3739,26 +3938,33 @@ elif nav_view == "Recommend":
     )
 
     if recs.empty:
-        st.warning("Tidak ada rekomendasi yang cocok. Turunkan minimal positivity, review, harga, atau tag wajib.")
+        st.warning("Tidak ada rekomendasi yang cocok. Coba longgarkan budget, filter positivity, jumlah review, atau tag wajib di Advanced AI Settings.")
     else:
         source_label = recs["cf_source"].iloc[0] if "cf_source" in recs.columns else "Ulasan pemain"
         render_html(
-            f"<div class='mini-note'><b>Engine aktif:</b> {esc(engine)} | <b>Sumber sinyal pemain:</b> {esc(source_label)} | Hasil sudah direrank dengan diversity penalty.</div>"
+            f"<div class='mini-note'><b>Mode aktif:</b> {esc(recommendation_mode)} | <b>Dasar rekomendasi:</b> selera, kualitas, value, dan sinyal pemain ({esc(source_label)}).</div>"
         )
-        render_cards(recs, games, favorite_titles, preferred_tags, columns=3, show_components=True, active_tag=active_tag)
+        render_cards(recs, games, favorite_titles, preferred_tags, columns=3, show_components=False, active_tag=active_tag)
 
-        st.markdown("### Score breakdown")
-        chart_df = recs.head(10)[["name", "content_component", "crowd_component", "rule_component", "value_component", "novelty_component", "final_score"]].copy()
-        chart_long = chart_df.melt(id_vars="name", var_name="component", value_name="score")
-        fig = px.bar(chart_long, x="score", y="name", color="component", orientation="h", barmode="group", title="Komponen skor top recommendation", labels={"score": "Skor 0-1", "name": "Game"})
-        fig.update_yaxes(categoryorder="total ascending")
-        st.plotly_chart(clean_plotly(fig, height=470), width="stretch")
+        with st.expander("Advanced AI Insights", expanded=False):
+            chart_df = recs.head(10)[["name", "content_component", "crowd_component", "rule_component", "value_component", "novelty_component", "final_score"]].copy()
+            chart_long = chart_df.melt(id_vars="name", var_name="component", value_name="score")
+            fig = px.bar(
+                chart_long,
+                x="score",
+                y="name",
+                color="component",
+                orientation="h",
+                barmode="group",
+                title="Komponen skor top recommendation",
+                labels={"score": "Skor 0-1", "name": "Game", "component": "Komponen"},
+                color_discrete_sequence=["#FDC787", "#A5C5CC", "#6FA9C1", "#4E82B4", "#275A91", "#977086"],
+            )
+            fig.update_yaxes(categoryorder="total ascending")
+            st.plotly_chart(polish_plotly(fig, height=470), width="stretch")
 
 elif nav_view == "About":
     render_html('<span id="about-us"></span>')
     render_html(about_us_section())
 
-# Always show About Us anchor at the bottom of Overview too
-if nav_view == "Overview":
-    render_html('<span id="about-us"></span>')
-    render_html(about_us_section())
+# About Us only on Home (via CTA) and About tab
