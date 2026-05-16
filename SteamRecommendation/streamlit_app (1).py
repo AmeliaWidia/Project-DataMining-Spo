@@ -622,24 +622,15 @@ def inject_css() -> None:
             background: linear-gradient(135deg, var(--gold), var(--mid));
             box-shadow: 0 12px 24px rgba(0,0,0,.22);
         }
-        /* Saat .mock-img juga punya .mock-icon-wrap: tampilkan SVG */
-        .mock-img.mock-icon-wrap {
+        .mock-img.mock-emoji-wrap {
             display: grid !important;
-            place-items: center;
-            background: linear-gradient(135deg, rgba(253,199,135,.16), rgba(39,90,145,.30)) !important;
-            border: 1px solid rgba(253,199,135,.24) !important;
+            place-items: center !important;
+            font-size: 1.6rem !important;
+            line-height: 1 !important;
+            background: linear-gradient(135deg, rgba(253,199,135,.14), rgba(39,90,145,.28)) !important;
+            border: 1px solid rgba(253,199,135,.22) !important;
             box-shadow: 0 6px 18px rgba(0,0,0,.16) !important;
-        }
-        .mock-img.mock-icon-wrap .mock-icon {
-            width: 24px !important;
-            height: 24px !important;
-            stroke: var(--gold) !important;
-            stroke-width: 1.7;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            filter: drop-shadow(0 0 8px rgba(253,199,135,.52));
-            display: block !important;
+            color: unset !important;
         }
         .mock-line b, .mock-line span { display: block; }
         .mock-line b { color: #fff !important; font-size: .88rem; margin-bottom: 3px; }
@@ -2074,23 +2065,7 @@ def inject_css() -> None:
         .feature-copy span { display: block; }
 
 
-        /* Mock icons in hero panel */
-        .mock-icon-wrap {
-            display: grid !important;
-            place-items: center;
-            background: linear-gradient(135deg, rgba(253,199,135,.18), rgba(39,90,145,.32)) !important;
-            border: 1px solid rgba(253,199,135,.26) !important;
-        }
-        .mock-icon {
-            width: 26px;
-            height: 26px;
-            stroke: var(--gold);
-            stroke-width: 1.7;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            filter: drop-shadow(0 0 8px rgba(253,199,135,.42));
-        }
+        /* Mock emoji icons handled by .mock-emoji-wrap */
 
         /* About Us section */
         .about-section {
@@ -2188,6 +2163,36 @@ def inject_css() -> None:
         }
 
 
+        .about-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-top: 28px;
+        }
+        .about-info-card {
+            padding: 22px 24px;
+            border-radius: 22px;
+            background: rgba(1,42,97,.32);
+            border: 1px solid rgba(165,197,204,.13);
+            box-shadow: 0 10px 30px rgba(0,0,0,.18);
+        }
+        .about-info-icon {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        .about-info-card b {
+            display: block;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--gold) !important;
+            margin-bottom: 8px;
+        }
+        .about-info-card p {
+            font-size: .84rem;
+            line-height: 1.65;
+            color: var(--text-soft) !important;
+            margin: 0;
+        }
         </style>
         """
     )
@@ -3556,24 +3561,18 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
             <div class="signature-orb"></div>
             <span class="particle p1"></span><span class="particle p2"></span><span class="particle p3"></span><span class="particle p4"></span>
             <div class="mock-row one">
-              <div class="mock-img mock-icon-wrap">
-                <svg viewBox='0 0 24 24' class='mock-icon' aria-hidden='true'><path d='M12 3l7 3v5c0 4.7-2.9 8.3-7 10-4.1-1.7-7-5.3-7-10V6l7-3z'/><path d='M9.2 12.2l1.8 1.8 4-4.4'/></svg>
-              </div>
-              <div class="mock-line"><b>Quality signal</b><span>92% trusted</span><span class="mock-label">Community Approved</span></div>
+              <div class="mock-img mock-emoji-wrap">⭐</div>
+              <div class="mock-line"><b>Quality Signal</b><span>92% Trusted</span><span class="mock-label">Community Approved</span></div>
               <div class="mock-score"><span class="mock-num">92</span><span class="mock-badge">trusted</span></div>
             </div>
             <div class="mock-row two">
-              <div class="mock-img mock-icon-wrap">
-                <svg viewBox='0 0 24 24' class='mock-icon' aria-hidden='true'><circle cx='12' cy='12' r='7.5'/><circle cx='12' cy='12' r='3.2'/><path d='M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3'/></svg>
-              </div>
-              <div class="mock-line"><b>Content match</b><span>88% match</span><span class="mock-label">Taste Match</span></div>
+              <div class="mock-img mock-emoji-wrap">🧬</div>
+              <div class="mock-line"><b>Content Match</b><span>88% Match</span><span class="mock-label">Taste Match</span></div>
               <div class="mock-score"><span class="mock-num">88</span><span class="mock-badge">match</span></div>
             </div>
             <div class="mock-row three">
-              <div class="mock-img mock-icon-wrap">
-                <svg viewBox='0 0 24 24' class='mock-icon' aria-hidden='true'><path d='M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z'/><path d='M18.4 15.3l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9.9-2.4z'/></svg>
-              </div>
-              <div class="mock-line"><b>Hybrid engine</b><span>95% optimized</span><span class="mock-label">Smart Optimized</span></div>
+              <div class="mock-img mock-emoji-wrap">⚡</div>
+              <div class="mock-line"><b>Hybrid Engine</b><span>95% Optimized</span><span class="mock-label">Smart Optimized</span></div>
               <div class="mock-score"><span class="mock-num">95</span><span class="mock-badge">optimized</span></div>
             </div>
           </div>
@@ -3583,20 +3582,15 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
     """
 
 def feature_strip() -> str:
-    icons = {
-        "shield": """<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 3l7 3v5c0 4.7-2.9 8.3-7 10-4.1-1.7-7-5.3-7-10V6l7-3z'/><path d='M9.2 12.2l1.8 1.8 4-4.4'/></svg>""",
-        "target": """<svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='7.5'/><circle cx='12' cy='12' r='3.2'/><path d='M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3'/></svg>""",
-        "spark": """<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z'/><path d='M18.4 15.3l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9.9-2.4z'/></svg>""",
-    }
     items = [
-        ("Quality signal", "92% trusted — Community Approved. Sinyal kualitas dari positivity, popularitas, playtime, dan value.", icons["shield"], ""),
-        ("Content match", "88% match — Taste Match. Tag, genre, kategori, dan deskripsi menangkap suasana yang kamu mau.", icons["target"], " alt"),
-        ("Hybrid engine", "95% optimized — Smart Optimized. Perpaduan selera, ulasan pemain, aturan, value, dan diversity.", icons["spark"], ""),
+        ("Quality Signal", "92% Trusted · Community Approved. Mengukur kualitas game dari positivity, popularitas, playtime, dan value.", "⭐", ""),
+        ("Content Match", "88% Match · Taste Match. Mencocokkan tag, genre, kategori, dan deskripsi dengan preferensi pengguna.", "🧬", " alt"),
+        ("Hybrid Engine", "95% Optimized · Smart Optimized. Menggabungkan selera, ulasan pemain, aturan, value, dan diversity.", "⚡", ""),
     ]
     cards = "".join(
         f"""
         <div class="feature-card">
-          <div class="feature-icon{variant}">{icon}</div>
+          <div class="feature-icon{variant}" style="font-size:1.6rem;line-height:1;">{icon}</div>
           <div class="feature-copy"><b>{esc(title)}</b><span>{esc(desc)}</span></div>
         </div>
         """
@@ -3645,6 +3639,19 @@ def about_us_section() -> str:
       <div class="about-kicker">Tim Pengembang</div>
       <h2>About Us</h2>
       <div class="team-grid">{cards}</div>
+
+      <div class="about-info-grid">
+        <div class="about-info-card">
+          <div class="about-info-icon">🎮</div>
+          <b>Tentang Dashboard</b>
+          <p>SteamVault Pro adalah platform interaktif untuk eksplorasi dan rekomendasi game Steam. Dashboard ini dibangun menggunakan pendekatan hybrid recommendation — menggabungkan content-based filtering, collaborative signals, dan rule-based logic. Setiap rekomendasi ditampilkan secara transparan agar pengguna bisa memahami alasan di baliknya.</p>
+        </div>
+        <div class="about-info-card">
+          <div class="about-info-icon">📊</div>
+          <b>Tentang Data</b>
+          <p>Data yang digunakan mencakup game-game populer di Steam hingga tahun 2026, tersimpan dalam file <b>steam_top_games_2026.csv</b>. Setiap entri dilengkapi dengan informasi genre, tags, harga, ulasan pengguna, playtime, Metacritic score, dan estimasi jumlah pemilik. Seluruh data telah melalui proses pembersihan dan normalisasi sebelum digunakan.</p>
+        </div>
+      </div>
     </section>
     """
 
