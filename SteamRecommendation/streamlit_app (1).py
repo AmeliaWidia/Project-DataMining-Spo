@@ -615,10 +615,31 @@ def inject_css() -> None:
         .mock-row.two { top: 112px; transform: translateX(18px); opacity: .92; }
         .mock-row.three { top: 202px; transform: translateX(-8px); opacity: .82; }
         .mock-img {
+            width: 48px;
             height: 48px;
+            flex-shrink: 0;
             border-radius: 14px;
             background: linear-gradient(135deg, var(--gold), var(--mid));
             box-shadow: 0 12px 24px rgba(0,0,0,.22);
+        }
+        /* Saat .mock-img juga punya .mock-icon-wrap: tampilkan SVG */
+        .mock-img.mock-icon-wrap {
+            display: grid !important;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(253,199,135,.16), rgba(39,90,145,.30)) !important;
+            border: 1px solid rgba(253,199,135,.24) !important;
+            box-shadow: 0 6px 18px rgba(0,0,0,.16) !important;
+        }
+        .mock-img.mock-icon-wrap .mock-icon {
+            width: 24px !important;
+            height: 24px !important;
+            stroke: var(--gold) !important;
+            stroke-width: 1.7;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 8px rgba(253,199,135,.52));
+            display: block !important;
         }
         .mock-line b, .mock-line span { display: block; }
         .mock-line b { color: #fff !important; font-size: .88rem; margin-bottom: 3px; }
@@ -3515,9 +3536,9 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
             <span class="hero-proof">AAA-style UI</span>
           </div>
           <div class="hero-actions">
-            <a class="cta cta-primary" href="{recommend_href}" target="_top">Cari rekomendasi</a>
-            <a class="cta cta-secondary" href="{explore_href}" target="_top">Browse library</a>
-            <a class="cta cta-secondary" href="{overview_href}" target="_top">Overview / Ringkasan</a>
+            <a class="cta cta-secondary" href="{overview_href}" target="_top">Overview</a>
+            <a class="cta cta-secondary" href="{explore_href}" target="_top">Explore</a>
+            <a class="cta cta-primary" href="{recommend_href}" target="_top">Rekomendasi</a>
             <a class="cta cta-secondary" href="{about_href}" target="_top">About Us</a>
           </div>
           <div class="hero-action-note">
@@ -3966,5 +3987,3 @@ elif nav_view == "Recommend":
 elif nav_view == "About":
     render_html('<span id="about-us"></span>')
     render_html(about_us_section())
-
-# About Us only on Home (via CTA) and About tab
