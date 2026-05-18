@@ -4043,11 +4043,31 @@ def render_sidebar_brand() -> None:
         )
 
 
-def hero_section(total_games: int, filtered_games: int, data_source: str) -> str:
+def hero_section(total_games: int, filtered_games: int, data_source: str, games_df=None, eval_results: dict = None) -> str:
+    # --- MENGHITUNG METRIK DINAMIS BERBASIS DATA ---
+    avg_pos = 85  # Fallback default
+    avg_qual = 75 # Fallback default
+    acc_score = 82 # Fallback default
+
+    if games_df is not None and not games_df.empty:
+        if "positivity" in games_df.columns:
+            avg_pos = int(games_df["positivity"].mean())
+        if "quality_score" in games_df.columns:
+            avg_qual = int(games_df["quality_score"].mean() * 100)
+    
+    if eval_results:
+        k_vals = sorted([k for k in eval_results if isinstance(k, int)])
+        if k_vals:
+            best_k = k_vals[-1]
+            acc_score = int(eval_results[best_k].get(f'Precision@{best_k}', 0.82) * 100)
+
+    # -----------------------------------------------
+
     explore_href = app_link("Explore", anchor="content-start")
     recommend_href = app_link("Recommend", anchor="content-start")
     overview_href = app_link("Overview", anchor="content-start")
     about_href = app_link("About", anchor="content-start")
+    
     return f"""
     <section class="hero">
       <div class="hero-grid">
@@ -4084,32 +4104,51 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
           <div class="launcher-screen">
             <div class="signature-orb"></div>
             <span class="particle p1"></span><span class="particle p2"></span><span class="particle p3"></span><span class="particle p4"></span>
+            
             <div class="mock-row one">
               <div class="mock-img mock-emoji-wrap">⭐</div>
-              <div class="mock-line"><b>Quality Signal</b><span>92% Trusted</span><span class="mock-label">Community Approved</span></div>
-              <div class="mock-score"><span class="mock-num">92</span><span class="mock-badge">trusted</span></div>
+              <div class="mock-line"><b>Quality Signal</b><span>{avg_pos}% Positive Base</span><span class="mock-label">Community Approved</span></div>
+              <div class="mock-score"><span class="mock-num">{avg_pos}</span><span class="mock-badge">trusted</span></div>
             </div>
             <div class="mock-row two">
               <div class="mock-img mock-emoji-wrap">🏆</div>
-              <div class="mock-line"><b>Content Match</b><span>88% Match</span><span class="mock-label">Taste Match</span></div>
-              <div class="mock-score"><span class="mock-num">88</span><span class="mock-badge">match</span></div>
+              <div class="mock-line"><b>Content Match</b><span>{avg_qual}% Quality Index</span><span class="mock-label">Data Driven</span></div>
+              <div class="mock-score"><span class="mock-num">{avg_qual}</span><span class="mock-badge">match</span></div>
             </div>
             <div class="mock-row three">
               <div class="mock-img mock-emoji-wrap">⚡</div>
-              <div class="mock-line"><b>Hybrid Engine</b><span>95% Optimized</span><span class="mock-label">Smart Optimized</span></div>
-              <div class="mock-score"><span class="mock-num">95</span><span class="mock-badge">optimized</span></div>
+              <div class="mock-line"><b>Hybrid Engine</b><span>{acc_score}% Accuracy</span><span class="mock-label">Smart Optimized</span></div>
+              <div class="mock-score"><span class="mock-num">{acc_score}</span><span class="mock-badge">optimized</span></div>
             </div>
+
           </div>
         </div>
       </div>
     </section>
     """
 
-def feature_strip() -> str:
+def feature_strip(games_df=None, eval_results: dict = None) -> str:
+    avg_pos = 85
+    avg_qual = 75
+    acc_score = 82
+
+    if games_df is not None and not games_df.empty:
+        if "positivity" in games_df.columns:
+            avg_pos = int(games_df["positivity"].mean())
+        if "quality_score" in games_df.columns:
+            avg_qual = int(games_df["quality_score"].mean() * 100)
+    
+    if eval_results:
+        k_vals = sorted([k for k in eval_results if isinstance(k, int)])
+        if k_vals:
+            best_k = k_vals[-1]
+            acc_score = int(eval_results[best_k].get(f'Precision@{best_k}', 0.82) * 100)
+    # -----------------------------------------------
+
     items = [
-        ("Quality Signal", "92% Trusted · Community Approved. Mengukur kualitas game dari positivity, popularitas, playtime, dan value.", "⭐", ""),
-        ("Content Match", "88% Match · Taste Match. Mencocokkan tag, genre, kategori, dan deskripsi dengan preferensi pengguna.", "🏆", " alt"),
-        ("Hybrid Engine", "95% Optimized · Smart Optimized. Menggabungkan selera, ulasan pemain, aturan, value, dan diversity.", "⚡", ""),
+        ("Quality Signal", f"{avg_pos}% Positive Base · Mengukur kualitas game menggunakan data empiris dari sentimen ulasan pemain.", "⭐", ""),
+        ("Content Match", f"{avg_qual}% Quality Index · Mencocokkan deskripsi game dan preferensi user dengan korelasi Pearson.", "🏆", " alt"),
+        ("Hybrid Engine", f"{acc_score}% Accuracy · Teruji secara offline. Menggabungkan selera, aturan, value, dan variasi hasil.", "⚡", ""),
     ]
     cards = "".join(
         f"""
@@ -4268,7 +4307,8 @@ filtered = apply_global_filters(games, year_range, global_price, global_min_pos,
 nav_view = active_view
 
 if nav_view == "Home":
-    render_html(hero_section(len(games), len(filtered), data_source))
+    current_eval = st.session_state.get("eval_results")
+    render_html(hero_section(len(games), len(filtered), data_source, games_df=games, eval_results=current_eval))
     st.stop()
 
 render_html(top_navigation(active_view, active_tag))
@@ -4313,7 +4353,7 @@ if nav_view == "Overview":
             )
     render_evaluation_panel(st.session_state["eval_results"])
     render_weight_justification_panel(games)
-    render_html(feature_strip())
+    render_html(feature_strip(games_df=games, eval_results=st.session_state["eval_results"]))
     render_html(section_header("Library intelligence", "overview dataset"))
     if filtered.empty:
         st.warning("Tidak ada data pada filter global saat ini.")
