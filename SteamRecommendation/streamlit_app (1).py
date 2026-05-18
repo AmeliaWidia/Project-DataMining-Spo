@@ -3665,7 +3665,7 @@ def about_us_section() -> str:
     team = [
         # (icon_emoji, name, NRP, bg_color)
         ("👩🏻‍💻", "Sharliz Mayalpen Zafirah", "5052241003", "#1A4A7A"),
-        ("👩🏽‍💻", "Amelia Widiastuti",        "5052241007", "#4A2060"),
+        ("👩🏻‍💻", "Amelia Widiastuti",        "5052241007", "#4A2060"),
         ("👨🏻‍💻", "Marvelio Jonathan Wijaya", "5052241017", "#0E4D3A"),
     ]
  
