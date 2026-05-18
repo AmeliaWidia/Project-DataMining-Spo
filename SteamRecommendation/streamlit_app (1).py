@@ -3951,9 +3951,9 @@ def render_evaluation_panel(eval_results: dict) -> None:
     <div class='glass-panel' style='border-left: 4px solid var(--gold); padding-left: 18px; margin-bottom: 24px;'>
         <p style='font-size: .95rem; line-height: 1.6; margin: 0;'>
             <b>Kesimpulan Performa:</b> Dari hasil pengujian, rekomendasi sistem ini punya <b>Tingkat Kecocokan {precision_pct:.0f}%</b>. 
-            Artinya, kalau sistem ngasih {best_k} rekomendasi game, sebagian besarnya bakal pas dengan selera user. 
-            Untuk <b>Akurasi Ranking, skornya mencapai {ndcg_pct:.0f}%</b>, jadi game yang paling relevan memang benar-benar muncul di deretan paling atas. 
-            Sistem kita juga berhasil ngeksplor <b>{coverage_pct:.1f}%</b> dari total katalog game, yang berarti hasil rekomendasinya bervariasi dan nggak cuma muter-muter di game mainstream aja.
+            Artinya, jika sistem memberi {best_k} rekomendasi game, sebagian besarnya akan sesuai dengan selera user. 
+            Untuk <b>Akurasi Ranking, skornya mencapai {ndcg_pct:.0f}%</b>, sehingga game yang paling relevan muncul di deretan paling atas. 
+            Sistem juga berhasil mengeksplorasi <b>{coverage_pct:.1f}%</b> dari total katalog game, artinya hasil rekomendasi bervariasi dan tidak hanya pada game mainstream saja.
         </p>
     </div>
     """)
