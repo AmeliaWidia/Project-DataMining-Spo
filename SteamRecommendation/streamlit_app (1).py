@@ -2626,41 +2626,49 @@ def rule_scores(
     mode: str,
 ) -> np.ndarray:
     genre_set = {g.lower() for g in preferred_genres}
-    tag_set = {t.lower() for t in preferred_tags}
-    scores = []
-    for _, row in games.iterrows():
-        score = 0.0
-        score += 0.35 * float(row.get("quality_score", 0.5))
-        score += 0.15 * float(row.get("affordability_score", 0.5))
+    tag_set   = {t.lower() for t in preferred_tags}
+ 
+    score  = 0.35 * games["quality_score"].fillna(0.5).to_numpy(dtype=float)
+    score += 0.15 * games["affordability_score"].fillna(0.5).to_numpy(dtype=float)
+ 
+    if genre_set:
+        genre_overlap = games["genre_list"].apply(
+            lambda xs: len({g.lower() for g in (xs if isinstance(xs, list) else [])} & genre_set)
+                       / max(1, len(genre_set))
+        ).to_numpy(dtype=float)
+        score += 0.20 * genre_overlap
+    else:
+        score += 0.10
 
-        if genre_set:
-            row_genres = {g.lower() for g in row.get("genre_list", [])}
-            score += 0.20 * (len(row_genres & genre_set) / max(1, len(genre_set)))
-        else:
-            score += 0.10
+    if tag_set:
+        tag_overlap = games["tag_list"].apply(
+            lambda xs: len({t.lower() for t in (xs if isinstance(xs, list) else [])} & tag_set)
+                       / max(1, len(tag_set))
+        ).to_numpy(dtype=float)
+        score += 0.22 * tag_overlap
+    else:
+        score += 0.08
 
-        if tag_set:
-            row_tags = {t.lower() for t in row.get("tag_list", [])}
-            score += 0.22 * (len(row_tags & tag_set) / max(1, len(tag_set)))
-        else:
-            score += 0.08
+    price_ok = (
+        games["is_free"].fillna(False)
+        | (games["price_effective"].fillna(np.inf) <= max_price)
+    ).to_numpy(dtype=float)
+    score += 0.06 * price_ok
 
-        price = float(row.get("price_effective", np.nan))
-        if bool(row.get("is_free", False)) or (np.isfinite(price) and price <= max_price):
-            score += 0.06
-        pos = float(row.get("positivity", np.nan))
-        if np.isfinite(pos) and pos >= min_positivity:
-            score += 0.05
-        if mode == "singleplayer" and bool(row.get("is_singleplayer", False)):
-            score += 0.07
-        elif mode == "multiplayer" and bool(row.get("is_multiplayer", False)):
-            score += 0.07
-        elif mode == "coop" and bool(row.get("is_coop", False)):
-            score += 0.07
-        elif mode == "any":
-            score += 0.04
-        scores.append(score)
-    return np.clip(np.asarray(scores, dtype=float), 0, 1)
+    pos_ok = (games["positivity"].fillna(0) >= min_positivity).to_numpy(dtype=float)
+    score += 0.05 * pos_ok
+
+    mode_map = {
+        "singleplayer": "is_singleplayer",
+        "multiplayer":  "is_multiplayer",
+        "coop":         "is_coop",
+    }
+    if mode in mode_map:
+        score += 0.07 * games[mode_map[mode]].fillna(False).to_numpy(dtype=float)
+    else:
+        score += 0.04
+ 
+    return np.clip(score, 0, 1)
 
 
 def apply_candidate_filters(
