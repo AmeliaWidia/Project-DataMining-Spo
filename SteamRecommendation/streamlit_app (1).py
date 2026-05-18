@@ -4082,7 +4082,6 @@ def hero_section(total_games: int, filtered_games: int, data_source: str, games_
             <span class="hero-proof">Hybrid recommender</span>
             <span class="hero-proof">Same-page tag filter</span>
             <span class="hero-proof">Game detail pages</span>
-            <span class="hero-proof">AAA-style UI</span>
           </div>
           <div class="hero-actions">
             <a class="cta cta-secondary" href="{overview_href}" target="_top">Overview</a>
