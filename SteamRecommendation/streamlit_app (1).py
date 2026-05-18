@@ -1,5 +1,4 @@
 # SteamVault Pro - Steam Game Discovery & Hybrid Recommendation Dashboard
-# Put this file in the same folder as steam_top_games_2026.csv, or upload the CSV from the sidebar.
 
 from __future__ import annotations
 
@@ -43,10 +42,7 @@ st.set_page_config(
 # Styling
 # -----------------------------------------------------------------------------
 def render_html(markup: str, **_ignored_kwargs) -> None:
-    """Render custom HTML/CSS as HTML, not Markdown.
-
-    This prevents Markdown from turning nested card HTML into visible text/code blocks.
-    """
+    """Render custom HTML/CSS as HTML"""
     cleaned = textwrap.dedent(str(markup)).strip()
     if not cleaned:
         return
@@ -138,7 +134,6 @@ def inject_css() -> None:
             height: 0 !important;
         }
 
-        /* Header stays alive so Streamlit's native sidebar open/close control can still work. */
         header, header[data-testid="stHeader"], [data-testid="stHeader"] {
             visibility: visible !important;
             display: block !important;
@@ -159,7 +154,6 @@ def inject_css() -> None:
             pointer-events: auto !important;
         }
 
-        /* Make the collapsed-sidebar opener impossible to miss. */
         [data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"] {
             visibility: visible !important;
             display: flex !important;
@@ -402,7 +396,7 @@ def inject_css() -> None:
             color: var(--text-soft) !important;
             font-weight: 800 !important;
         }
-        /* Slider track & thumb: replace Streamlit's default red with theme gold/mist */
+
         [data-testid="stSlider"] [data-baseweb="slider"] [role="slider"] {
             background: linear-gradient(135deg, var(--gold), var(--mist)) !important;
             border-color: rgba(253,199,135,.70) !important;
@@ -416,7 +410,7 @@ def inject_css() -> None:
         [data-testid="stSlider"] div[data-baseweb="slider"] > div > div:first-child > div:first-child {
             background: linear-gradient(90deg, var(--mid), var(--gold)) !important;
         }
-        /* Target the inner filled part of range slider via inline style pattern */
+
         [data-testid="stSlider"] div[data-baseweb="slider"] div[style*="rgb(255, 75, 75)"],
         [data-testid="stSlider"] div[data-baseweb="slider"] div[style*="rgb(255,75,75)"] {
             background: linear-gradient(90deg, var(--mid), var(--mist)) !important;
@@ -1089,7 +1083,7 @@ def inject_css() -> None:
         }
 
 
-        /* Final premium pass: cinematic depth, clickable UI, stronger identity */
+
         .stApp [data-testid="stVerticalBlock"] { animation: softReveal .55s ease both; }
         @keyframes softReveal {
             from { opacity: 0; transform: translateY(10px); }
@@ -1576,7 +1570,7 @@ def inject_css() -> None:
         @media (max-width: 760px) { .card-grid { grid-template-columns: 1fr; } }
 
 
-        /* Detail page + gameplay description patch */
+
         .game-desc {
             margin: 11px 0 0;
             color: rgba(238,248,250,.78) !important;
@@ -1780,8 +1774,6 @@ def inject_css() -> None:
             color: var(--ink) !important;
         }
 
-
-        /* User-facing explanation should feel human, not like a statistics note. */
         .why {
             background: linear-gradient(180deg, rgba(165,197,204,.105), rgba(39,90,145,.12)) !important;
             border-color: rgba(165,197,204,.20) !important;
@@ -1790,8 +1782,6 @@ def inject_css() -> None:
             color: var(--gold) !important;
         }
 
-
-        /* Final fix: keep the native Streamlit sidebar opener visible and obvious. */
         header, header[data-testid="stHeader"], [data-testid="stHeader"] {
             visibility: visible !important;
             display: block !important;
@@ -1910,7 +1900,6 @@ def inject_css() -> None:
             border-radius: inherit !important;
         }
 
-        /* Premium simplified UX pass: immersive sidebar + intentional feature icons */
         section[data-testid="stSidebar"] {
             background:
                 radial-gradient(circle at 18% 0%, rgba(253,199,135,.16), transparent 15rem),
@@ -2065,9 +2054,6 @@ def inject_css() -> None:
         .feature-copy span { display: block; }
 
 
-        /* Mock emoji icons handled by .mock-emoji-wrap */
-
-        /* About Us section */
         .about-section {
             margin: 42px 0 0;
             padding: clamp(28px, 4vw, 54px);
@@ -2192,6 +2178,38 @@ def inject_css() -> None:
             line-height: 1.65;
             color: var(--text-soft) !important;
             margin: 0;
+        }
+
+        .detail-grid {
+            align-items: center !important;
+            grid-template-columns: minmax(380px, .78fr) minmax(0, 1.22fr) !important;
+        }
+        .detail-cover {
+            width: 100% !important;
+            aspect-ratio: 16 / 9 !important;
+            min-height: 0 !important;
+            height: auto !important;
+            align-self: center !important;
+        }
+        .detail-cover img {
+            position: absolute !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            object-fit: cover !important;
+            object-position: center center !important;
+        }
+        @media (min-width: 1180px) {
+            .detail-cover img {
+                object-fit: contain !important;
+                background: radial-gradient(circle at 50% 40%, rgba(39,90,145,.24), rgba(2,19,52,.92));
+            }
+        }
+        @media (max-width: 980px) {
+            .detail-grid { grid-template-columns: 1fr !important; }
+            .detail-cover { aspect-ratio: 16 / 9 !important; min-height: 0 !important; }
+            .detail-cover img { min-height: 0 !important; }
         }
         </style>
         """
@@ -2424,7 +2442,6 @@ def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
         df["year"] = df["release_date"].str.extract(r"((?:19|20)\d{2})")[0]
         df["year"] = pd.to_numeric(df["year"], errors="coerce")
 
-    # Clean obvious playtime sentinels without erasing valid long games.
     for col in ["avg_playtime_forever", "avg_playtime_2weeks", "median_playtime"]:
         if df[col].notna().sum() > 20:
             upper = df[col].quantile(0.995)
@@ -2449,7 +2466,7 @@ def prepare_games(raw: pd.DataFrame) -> pd.DataFrame:
         (df["positive_reviews"] / df["total_reviews"] * 100),
         np.nan,
     )
-    # Fallback: if review polarity is unavailable, use metacritic as imperfect rating proxy.
+    # Fallback: if review polarity is unavailable, use metacritic as imperfect rating proxy
     df["positivity"] = df["positivity"].fillna(df["metacritic_score"])
 
     valid_rating = df["positivity"].dropna()
@@ -2896,7 +2913,7 @@ def steam_url(row: pd.Series) -> str:
 
 
 def query_value(name: str, default: str = "") -> str:
-    """Read one query-param value across Streamlit versions."""
+    """Read one query-param value across Streamlit versions"""
     try:
         value = st.query_params.get(name, default)
         if isinstance(value, list):
@@ -2907,7 +2924,7 @@ def query_value(name: str, default: str = "") -> str:
 
 
 def match_known_value(raw: str, options: Sequence[str]) -> str:
-    """Return the existing option with matching casing, if available."""
+    """Return the existing option with matching casing"""
     raw_clean = str(raw or "").strip()
     if not raw_clean:
         return ""
@@ -2916,7 +2933,7 @@ def match_known_value(raw: str, options: Sequence[str]) -> str:
 
 
 def app_link(view: str = "Explore", tag: str | None = None, game: str | None = None, anchor: str | None = None) -> str:
-    """Create an in-app same-tab navigation link using query params."""
+    """Create a navigation link using query params"""
     params = [f"view={quote(str(view), safe='')}"]
     if tag:
         params.append(f"tag={quote(str(tag), safe='')}")
@@ -2934,7 +2951,7 @@ def tag_link(tag: str, active_tag: str = "") -> str:
 
 
 def clean_game_text(value: object) -> str:
-    """Plain-text cleanup for Steam descriptions so raw HTML never appears in cards."""
+    """Plain-text cleanup for Steam descriptions"""
     if value is None:
         return ""
     try:
@@ -2958,7 +2975,7 @@ def shorten_text(text: str, limit: int = 170) -> str:
 
 
 def gameplay_description(row: pd.Series, limit: int = 180) -> str:
-    """Use dataset short_description first, then generate a small gameplay-like summary."""
+    """Dataset short_description then generate small summary"""
     desc = clean_game_text(row.get("short_description", ""))
     if desc:
         return shorten_text(desc, limit)
@@ -3037,7 +3054,7 @@ def component_bar(label: str, value: float) -> str:
 
 
 def explain_row(row: pd.Series, games: pd.DataFrame, favorite_titles: Sequence[str], preferred_tags: Sequence[str]) -> str:
-    """Generate short, non-technical reasons for normal users."""
+    """Generate short reasons for normal user"""
     reasons: list[str] = []
 
     if favorite_titles:
@@ -3051,7 +3068,7 @@ def explain_row(row: pd.Series, games: pd.DataFrame, favorite_titles: Sequence[s
         shared_tags = [t for t in row.get("tag_list", []) if t.lower() in fav_tags][:3]
         shared_genres = [g for g in row.get("genre_list", []) if g.lower() in fav_genres][:2]
         if shared_tags:
-            reasons.append("mirip dengan game favoritmu: " + ", ".join(shared_tags))
+            reasons.append("mirip dengan game favorit kamu: " + ", ".join(shared_tags))
         elif shared_genres:
             reasons.append("genrenya mirip dengan game yang kamu suka: " + ", ".join(shared_genres))
 
@@ -3199,7 +3216,7 @@ def render_cards(
 
 
 def similar_games_for(row: pd.Series, games: pd.DataFrame, matrix, limit: int = 6) -> pd.DataFrame:
-    """Find similar games for the detail page using content similarity plus quality signal."""
+    """Find similar games for the detail page using content similarity + quality signal"""
     if games.empty:
         return games.head(0)
     try:
@@ -3253,7 +3270,7 @@ def render_game_detail(row: pd.Series, games: pd.DataFrame, matrix, active_tag: 
     steam = steam_url(row)
     steam_button = f'<a class="detail-cta primary" href="{esc(steam)}" target="_blank" rel="noopener noreferrer">Open Steam page</a>' if steam else '<span class="detail-cta primary">Steam page unavailable</span>'
     first_tag = str(tags[0]) if tags else ""
-    more_button = f'<a class="detail-cta secondary" href="{app_link("Explore", tag=first_tag, anchor="content-start")}" target="_top">Explore more {esc(first_tag)}</a>' if first_tag else f'<a class="detail-cta secondary" href="{app_link("Explore", anchor="content-start")}" target="_top">Back to library</a>'
+    more_button = f'<a class="detail-cta secondary" href="{app_link("Explore", tag=first_tag, anchor="content-start")}" target="_top">Explore more {esc(first_tag)}</a>' if first_tag else f'<a class="detail-cta secondary" href="{app_link("Explore", anchor="content-start")}" target="_top">Kembali ke library</a>'
     back_href = app_link("Explore", tag=active_tag if active_tag else None, anchor="content-start")
 
     mode_bits = []
@@ -3269,7 +3286,7 @@ def render_game_detail(row: pd.Series, games: pd.DataFrame, matrix, active_tag: 
 
     render_html(f"""
     <section class="detail-hero">
-      <a class="back-link" href="{back_href}" target="_top">← Back to library</a>
+      <a class="back-link" href="{back_href}" target="_top">← Kembali ke library</a>
       <div class="detail-grid">
         <div class="detail-cover">{cover_html}</div>
         <div class="detail-copy">
@@ -3491,7 +3508,7 @@ def premium_quality_scatter(scatter_df: pd.DataFrame, height: int = 340) -> go.F
 
 
 def top_unique_games(df: pd.DataFrame, sort_col: str, used_names: set[str], n: int = 3) -> pd.DataFrame:
-    """Pick top games while avoiding repeated titles across quick-pick panels."""
+    """Pick top games while avoiding repeated titles"""
     if df.empty or sort_col not in df.columns:
         return df.head(0)
     ranked = df.sort_values(sort_col, ascending=False, na_position="last")
@@ -3542,9 +3559,9 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
           </div>
           <div class="hero-actions">
             <a class="cta cta-secondary" href="{overview_href}" target="_top">Overview</a>
-            <a class="cta cta-secondary" href="{explore_href}" target="_top">Explore</a>
+            <a class="cta cta-secondary" href="{explore_href}" target="_top">Jelajahi Library</a>
             <a class="cta cta-primary" href="{recommend_href}" target="_top">Rekomendasi</a>
-            <a class="cta cta-secondary" href="{about_href}" target="_top">About Us</a>
+            <a class="cta cta-secondary" href="{about_href}" target="_top">Tentang Kami</a>
           </div>
           <div class="hero-action-note">
             <b>Rekomendasi</b> = isi preferensi lalu sistem memilih game yang paling cocok.<br>
@@ -3566,7 +3583,7 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
               <div class="mock-score"><span class="mock-num">92</span><span class="mock-badge">trusted</span></div>
             </div>
             <div class="mock-row two">
-              <div class="mock-img mock-emoji-wrap">🧬</div>
+              <div class="mock-img mock-emoji-wrap">🏆</div>
               <div class="mock-line"><b>Content Match</b><span>88% Match</span><span class="mock-label">Taste Match</span></div>
               <div class="mock-score"><span class="mock-num">88</span><span class="mock-badge">match</span></div>
             </div>
@@ -3584,7 +3601,7 @@ def hero_section(total_games: int, filtered_games: int, data_source: str) -> str
 def feature_strip() -> str:
     items = [
         ("Quality Signal", "92% Trusted · Community Approved. Mengukur kualitas game dari positivity, popularitas, playtime, dan value.", "⭐", ""),
-        ("Content Match", "88% Match · Taste Match. Mencocokkan tag, genre, kategori, dan deskripsi dengan preferensi pengguna.", "🧬", " alt"),
+        ("Content Match", "88% Match · Taste Match. Mencocokkan tag, genre, kategori, dan deskripsi dengan preferensi pengguna.", "🏆", " alt"),
         ("Hybrid Engine", "95% Optimized · Smart Optimized. Menggabungkan selera, ulasan pemain, aturan, value, dan diversity.", "⚡", ""),
     ]
     cards = "".join(
@@ -3602,7 +3619,7 @@ def section_header(title: str, subtitle: str = "") -> str:
     return f'<div class="section-title"><h3>{esc(title)}</h3><span>{esc(subtitle)}</span></div>'
 
 def _avatar_from_assets(filename: str, initials: str, bg: str) -> str:
-    """Load photo from assets/ folder as base64. Falls back to SVG initials if file not found."""
+    """Load photo from assets/ folder"""
     import base64, mimetypes
     assets_dir = Path(__file__).parent / "assets"
     filepath = assets_dir / filename
@@ -3620,12 +3637,11 @@ def _avatar_from_assets(filename: str, initials: str, bg: str) -> str:
     )
 
 def about_us_section() -> str:
-    """Render the About Us section — foto dari assets/, fallback ke SVG inisial."""
     team = [
-        # (nama_file_di_assets, inisial_fallback, nama, NIM, warna_fallback)
-        ("sharliz.jpg", "SM", "Sharliz Mayalpen Zafirah", "5052241003", "#1A4A7A"),
-        ("amelia.jpg",  "AW", "Amelia Widiastuti",        "5052241007", "#4A2060"),
-        ("marvelio.jpg","MJ", "Marvelio Jonathan Wijaya", "5052241017", "#0E4D3A"),
+        # (icon, nama, NRP, warna_background)
+        ("👩🏻‍💻", "Sharliz Mayalpen Zafirah", "5052241003", "#1A4A7A"),
+        ("👩🏻‍💻", "Amelia Widiastuti",        "5052241007", "#4A2060"),
+        ("👨🏻‍💻", "Marvelio Jonathan Wijaya", "5052241017", "#0E4D3A"),
     ]
     cards = "".join(f"""
     <div class="team-card">
@@ -3637,19 +3653,17 @@ def about_us_section() -> str:
     return f"""
     <section class="about-section">
       <div class="about-kicker">Tim Pengembang</div>
-      <h2>About Us</h2>
+      <h2>Tentang Kami</h2>
       <div class="team-grid">{cards}</div>
 
       <div class="about-info-grid">
         <div class="about-info-card">
-          <div class="about-info-icon">🎮</div>
           <b>Tentang Dashboard</b>
-          <p>SteamVault Pro adalah platform interaktif untuk eksplorasi dan rekomendasi game Steam. Dashboard ini dibangun menggunakan pendekatan hybrid recommendation — menggabungkan content-based filtering, collaborative signals, dan rule-based logic. Setiap rekomendasi ditampilkan secara transparan agar pengguna bisa memahami alasan di baliknya.</p>
+          <p>SteamVault Pro adalah platform interaktif untuk eksplorasi dan rekomendasi game Steam yang dikembangkan untuk proyek mata kuliah Data Mining. Kami membangun dashboard ini menggunakan pendekatan <i>hybrid recommendation</i> yang menggabungkan <i>content-based filtering</i>, <i>collaborative signals</i>, dan <i>rule-based logic</i>. Setiap rekomendasi ditampilkan secara transparan agar pengguna bisa memahami proses analitis di baliknya.</p>
         </div>
         <div class="about-info-card">
-          <div class="about-info-icon">📊</div>
           <b>Tentang Data</b>
-          <p>Data yang digunakan mencakup game-game populer di Steam hingga tahun 2026, tersimpan dalam file <b>steam_top_games_2026.csv</b>. Setiap entri dilengkapi dengan informasi genre, tags, harga, ulasan pengguna, playtime, Metacritic score, dan estimasi jumlah pemilik. Seluruh data telah melalui proses pembersihan dan normalisasi sebelum digunakan.</p>
+          <p>Data yang digunakan berasal dari dataset <a href="https://www.kaggle.com/datasets/patelris/steam-top-1495-games-dataset" target="_blank" style="color: var(--gold); text-decoration: none;">Kaggle (Steam Top 1495 Games Dataset)</a> pada file <b>steam_top_games_2026.csv</b>. Setiap row dilengkapi dengan variabel penting seperti genre, <i>tags</i>, harga, ulasan pengguna, <i>playtime</i>, Metacritic score, dan estimasi jumlah pemilik. Seluruh data telah melalui tahapan <i>preprocessing</i>, pembersihan, dan normalisasi sebelum diimplementasikan ke dalam model.</p>
         </div>
       </div>
     </section>
@@ -3660,9 +3674,9 @@ def top_navigation(active_view: str, active_tag: str = "") -> str:
     home_href = app_link("Home")
     items = [
         ("Overview", "Overview"),
-        ("Explore Library", "Explore"),
-        ("Recommender", "Recommend"),
-        ("About Us", "About"),
+        ("Jelajahi Library", "Explore"),
+        ("Rekomendasi", "Recommend"),
+        ("Tentang Kami", "About"),
     ]
     links: list[str] = []
     for label, view in items:
@@ -3696,13 +3710,12 @@ try:
         games = load_games_from_path(str(DEFAULT_CSV))
         data_source = DEFAULT_CSV.name
     else:
-        st.error("Dataset belum ditemukan. Letakkan steam_top_games_2026.csv di folder yang sama dengan app.")
+        st.error("Dataset belum ditemukan. Input steam_top_games_2026.csv di folder yang sama dengan app.")
         st.stop()
 except Exception as exc:
     st.error(f"Gagal membaca dataset: {exc}")
     st.stop()
 
-# Simplified public experience: no upload workflow in the UI.
 interactions = None
 
 vectorizer, tfidf_matrix = build_tfidf(tuple(games["content_text"].tolist()))
@@ -3717,7 +3730,7 @@ if active_view not in NAV_OPTIONS:
 active_tag = match_known_value(query_value("tag", ""), all_tags)
 active_tag_default = [active_tag] if active_tag in all_tags else []
 
-# Sidebar global filters — always computed so sub-pages can use them
+# Sidebar global filters
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Discovery tuning")
 years = games["year"].dropna()
@@ -3740,16 +3753,16 @@ global_tags = st.sidebar.multiselect(
 )
 global_mode = st.sidebar.selectbox("Mode bermain", ["any", "singleplayer", "multiplayer", "coop"])
 global_search = st.sidebar.text_input("Cari game")
+if global_search.strip() and active_view in {"Home", "Overview", "Recommend", "About"}:
+    active_view = "Explore"
 filtered = apply_global_filters(games, year_range, global_price, global_min_pos, global_genres, global_tags, global_mode, global_search)
 
 nav_view = active_view
 
-# ── HOME: hero only, no nav, no content ──────────────────────────────────────
 if nav_view == "Home":
     render_html(hero_section(len(games), len(filtered), data_source))
     st.stop()
 
-# ── ALL OTHER VIEWS: show navbar, no hero ────────────────────────────────────
 render_html(top_navigation(active_view, active_tag))
 
 if nav_view == "Detail":
@@ -3761,7 +3774,6 @@ if nav_view == "Detail":
     render_game_detail(detail_row, games, tfidf_matrix, active_tag=active_tag)
     st.stop()
 
-# nav-intro ("Navigation ready") only on non-About pages
 if nav_view != "About":
     render_html('<span id="content-start"></span>')
 
@@ -3775,7 +3787,6 @@ if active_tag and nav_view != "About":
         """
     )
 
-# KPI cards — show only on Overview and Explore, NOT on About/Recommend
 if nav_view in ("Overview", "Explore"):
     st.caption(f"Data source: {data_source} | Jumlah data: {len(games):,} game | Setelah filter: {len(filtered):,} game")
     kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
@@ -3861,9 +3872,9 @@ elif nav_view == "Explore":
         render_cards(browse, games, columns=3, active_tag=active_tag)
 
 elif nav_view == "Recommend":
-    render_html('<span id="recommender"></span>' + section_header("Game recommendations", "simple, premium, and tailored to your taste"))
+    render_html('<span id="recommender"></span>' + section_header("Game recommendations", "hybrid, simple, and tailored to your taste"))
     render_html(
-        "<div class='mini-note'>Mulai dari mode rekomendasi yang simpel, lalu tambahkan favorit, genre, atau tag untuk membuat hasil makin personal.</div>"
+        "<div class='mini-note'><b>Rekomendasi dibuat dari gabungan selera, kualitas game, popularitas pemain, dan variasi hasil.</b> Pilih gaya rekomendasi yang diinginkan.</div>"
     )
 
     MOODS = {
@@ -3876,28 +3887,32 @@ elif nav_view == "Recommend":
     }
     REC_MODE_PRESETS = {
         "Popular": {
-            "desc": "Mengutamakan game yang paling aman, ramai dimainkan, dan punya sinyal kualitas kuat.",
+            "desc": "Game yang ramai dan berkualitas untuk mulai eksplorasi.",
+            "hybrid_note": "Bobot lebih besar ke popularitas dan kualitas umum.",
             "weights": {"content": 0.16, "crowd": 0.42, "rule": 0.14, "value": 0.18, "novelty": 0.10},
             "diversity": 0.10,
             "min_pos": 75,
             "min_reviews": 800,
         },
         "Balanced": {
-            "desc": "Campuran seimbang antara kecocokan selera, reputasi pemain, dan value.",
+            "desc": "Campuran selera, kualitas, value, dan variasi hasil.",
+            "hybrid_note": "Mode ini memakai Weighted Hybrid: beberapa sinyal digabung menjadi satu skor akhir.",
             "weights": {"content": 0.42, "crowd": 0.27, "rule": 0.16, "value": 0.10, "novelty": 0.05},
             "diversity": 0.18,
             "min_pos": 65,
             "min_reviews": 250,
         },
         "Personalized": {
-            "desc": "Lebih fokus ke game yang mirip dengan preferensi, tag, dan favorit yang kamu pilih.",
+            "desc": "Lebih dekat dengan genre, tag, mood, atau game favoritmu.",
+            "hybrid_note": "Mode ini menaikkan bobot Content-Based agar hasil lebih sesuai selera.",
             "weights": {"content": 0.50, "crowd": 0.16, "rule": 0.16, "value": 0.08, "novelty": 0.10},
             "diversity": 0.16,
             "min_pos": 60,
             "min_reviews": 150,
         },
         "Hidden Gems": {
-            "desc": "Mencari game yang kuat secara kualitas tapi lebih unik dan tidak terlalu mainstream.",
+            "desc": "Game yang kuat secara kualitas tetapi unik dan tidak mainstream.",
+            "hybrid_note": "Bobot lebih besar ke novelty dan variasi hasil.",
             "weights": {"content": 0.26, "crowd": 0.12, "rule": 0.16, "value": 0.12, "novelty": 0.34},
             "diversity": 0.28,
             "min_pos": 60,
@@ -3906,9 +3921,18 @@ elif nav_view == "Recommend":
     }
 
     engine = "Smart Hybrid"
-    recommendation_mode = st.radio("Recommendation mode", list(REC_MODE_PRESETS.keys()), horizontal=True)
+    recommendation_mode = st.radio("Pilih gaya rekomendasi", list(REC_MODE_PRESETS.keys()), horizontal=True)
     mode_preset = REC_MODE_PRESETS[recommendation_mode]
-    render_html(f"<div class='glass-panel'><b>{esc(recommendation_mode)}</b><br><span class='muted'>{esc(mode_preset['desc'])}</span></div>")
+    render_html(
+        f"<div class='glass-panel'><b>{esc(recommendation_mode)}</b><br>"
+        f"<span class='muted'>{esc(mode_preset['desc'])}</span><br>"
+        f"<span class='muted'>Tetap memakai hybrid recommendation; yang berubah hanya prioritas bobotnya.</span></div>"
+    )
+    render_html(
+        "<div class='mini-note'><b>Bagian hybrid-nya ada di skor akhir rekomendasi.</b> Sistem menggabungkan "
+        "kecocokan genre/tag/deskripsi, kualitas dan popularitas pemain, filter pilihanmu, serta value/hidden gems. "
+        "Detail bobot teknis tersedia di Advanced Hybrid Settings.</div>"
+    )
 
     r1, r2 = st.columns([1.08, 0.92])
     with r1:
@@ -3929,8 +3953,8 @@ elif nav_view == "Recommend":
     diversity = float(mode_preset["diversity"])
     weights = advanced_defaults.copy()
 
-    with st.expander("Advanced AI Settings", expanded=False):
-        render_html("<div class='mini-note'>Untuk power users: atur bobot mesin rekomendasi dan filter teknis di sini. Default mode di atas sudah cukup untuk sebagian besar user.</div>")
+    with st.expander("Advanced Hybrid Settings", expanded=False):
+        render_html("<div class='mini-note'>Bagi user yang lebih advanced, bisa atur bobot mesin rekomendasi dan filter manual di sini.</div>")
         a1, a2, a3 = st.columns(3)
         with a1:
             min_pos = st.slider("Minimal positivity (%)", 0, 100, int(mode_preset["min_pos"]))
@@ -3944,6 +3968,18 @@ elif nav_view == "Recommend":
             must_have_tags = st.multiselect("Must-have tags", all_tags, max_selections=4)
             diversity = st.slider("Diversity penalty", 0.0, 0.60, float(mode_preset["diversity"]), 0.02, help="Lebih tinggi = hasil lebih beragam dan tidak terlalu mirip satu sama lain.")
             weights["rule"] = st.slider("Rule weight", 0.0, 1.0, float(advanced_defaults["rule"]), 0.05)
+
+    has_taste_input = bool(favorite_titles or preferred_genres or preferred_tags or mood_terms)
+    hybrid_strategy = "Weighted Hybrid"
+    if not has_taste_input and weights.get("content", 0.0) > 0:
+        # Switching Hybrid fallback: when the user has not given taste signals yet,
+        # content similarity has no profile to compare against. The content weight is
+        # moved to crowd/rule signals so recommendations still work for new users.
+        shifted_content = float(weights.get("content", 0.0))
+        weights["content"] = 0.0
+        weights["crowd"] = float(weights.get("crowd", 0.0)) + shifted_content * 0.65
+        weights["rule"] = float(weights.get("rule", 0.0)) + shifted_content * 0.35
+        hybrid_strategy = "Switching Hybrid fallback"
 
     recs = recommend_games(
         games=games,
@@ -3966,16 +4002,28 @@ elif nav_view == "Recommend":
     )
 
     if recs.empty:
-        st.warning("Tidak ada rekomendasi yang cocok. Coba longgarkan budget, filter positivity, jumlah review, atau tag wajib di Advanced AI Settings.")
+        st.warning("Tidak ada rekomendasi yang cocok. Coba atur ulang bobot di Advanced Hybrid Settings.")
     else:
         source_label = recs["cf_source"].iloc[0] if "cf_source" in recs.columns else "Ulasan pemain"
         render_html(
-            f"<div class='mini-note'><b>Mode aktif:</b> {esc(recommendation_mode)} | <b>Dasar rekomendasi:</b> selera, kualitas, value, dan sinyal pemain ({esc(source_label)}).</div>"
+            f"<div class='mini-note'><b>Mode aktif:</b> {esc(recommendation_mode)} | <b>Hybrid yang dipakai:</b> {esc(hybrid_strategy)}. "
+            f"Skor akhir berasal dari gabungan selera/kecocokan konten, kualitas dan popularitas pemain ({esc(source_label)}), filter pilihanmu, value, dan variasi hasil.</div>"
         )
         render_cards(recs, games, favorite_titles, preferred_tags, columns=3, show_components=False, active_tag=active_tag)
 
-        with st.expander("Advanced AI Insights", expanded=False):
+        with st.expander("Lihat bagian hybrid recommendation", expanded=False):
+            render_html(
+                "<div class='mini-note'><b>Bagian hybrid-nya ada di final score.</b> Setiap game diberi beberapa skor kecil, lalu digabung menjadi satu skor akhir untuk menentukan urutan rekomendasi.</div>"
+            )
             chart_df = recs.head(10)[["name", "content_component", "crowd_component", "rule_component", "value_component", "novelty_component", "final_score"]].copy()
+            chart_df = chart_df.rename(columns={
+                "content_component": "Content-Based match",
+                "crowd_component": "Sinyal pemain/kualitas",
+                "rule_component": "Rule-Based filter",
+                "value_component": "Value/harga",
+                "novelty_component": "Novelty/hidden gems",
+                "final_score": "Final hybrid score",
+            })
             chart_long = chart_df.melt(id_vars="name", var_name="component", value_name="score")
             fig = px.bar(
                 chart_long,
@@ -3984,8 +4032,8 @@ elif nav_view == "Recommend":
                 color="component",
                 orientation="h",
                 barmode="group",
-                title="Komponen skor top recommendation",
-                labels={"score": "Skor 0-1", "name": "Game", "component": "Komponen"},
+                title="Bagian skor yang digabung dalam Hybrid Recommendation",
+                labels={"score": "Skor 0-1", "name": "Game", "component": "Bagian hybrid"},
                 color_discrete_sequence=["#FDC787", "#A5C5CC", "#6FA9C1", "#4E82B4", "#275A91", "#977086"],
             )
             fig.update_yaxes(categoryorder="total ascending")
