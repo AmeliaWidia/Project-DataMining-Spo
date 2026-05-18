@@ -3627,14 +3627,18 @@ def section_header(title: str, subtitle: str = "") -> str:
     return f'<div class="section-title"><h3>{esc(title)}</h3><span>{esc(subtitle)}</span></div>'
 
 def _avatar_from_assets(filename: str, initials: str, bg: str) -> str:
-    """Load photo from assets/ folder"""
+    """Load photo from assets/ folder, fallback to SVG inisial."""
     import base64, mimetypes
+    # `__file__` tidak tersedia di snippet ini; ganti dengan path app sesungguhnya
     assets_dir = Path(__file__).parent / "assets"
     filepath = assets_dir / filename
     if filepath.exists():
         mime = mimetypes.guess_type(str(filepath))[0] or "image/jpeg"
         b64 = base64.b64encode(filepath.read_bytes()).decode()
-        return f'<img src="data:{mime};base64,{b64}" alt="{initials}" style="width:76px;height:76px;object-fit:cover;border-radius:50%;">'
+        return (
+            f'<img src="data:{mime};base64,{b64}" alt="{initials}" '
+            f'style="width:76px;height:76px;object-fit:cover;border-radius:50%;">'
+        )
     # Fallback: SVG inisial
     return (
         f'<svg viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg" width="76" height="76">'
@@ -3643,35 +3647,71 @@ def _avatar_from_assets(filename: str, initials: str, bg: str) -> str:
         f'font-size="24" font-weight="800" fill="#EEF8FA" letter-spacing="-0.03em">{initials}</text>'
         f'</svg>'
     )
-
+ 
+ 
+def esc(value: object) -> str:
+    import html, math
+    if value is None:
+        return ""
+    try:
+        if isinstance(value, float) and math.isnan(value):
+            return ""
+    except Exception:
+        pass
+    return html.escape(str(value))
+ 
+ 
 def about_us_section() -> str:
     team = [
-        # (icon, nama, NRP, warna_background)
+        # (filename/emoji, name, NRP, bg_color)
+        # Kalau ada foto di folder assets/, ganti emoji dengan nama file, misal "sharliz.jpg"
+        # Kalau tidak ada, fallback otomatis ke SVG inisial dari `name`
         ("👩🏻‍💻", "Sharliz Mayalpen Zafirah", "5052241003", "#1A4A7A"),
         ("👩🏻‍💻", "Amelia Widiastuti",        "5052241007", "#4A2060"),
         ("👨🏻‍💻", "Marvelio Jonathan Wijaya", "5052241017", "#0E4D3A"),
     ]
-    cards = "".join(f"""
-    <div class="team-card">
-      <div class="team-avatar">{_avatar_from_assets(emoji, bg)}</div>
-      <span class="team-name">{esc(name)}</span>
-      <span class="team-role">{esc(nrp)}</span>
-    </div>
-    """ for emoji, name, nrp, bg in team)
+ 
+    cards = "".join(
+        f"""
+        <div class="team-card">
+          <div class="team-avatar">{_avatar_from_assets(
+              filename,
+              "".join([part[:1] for part in re.findall(r"[A-Za-z]+", name)[:2]]).upper() or "SV",
+              bg,
+          )}</div>
+          <span class="team-name">{esc(name)}</span>
+          <span class="team-role">{esc(nrp)}</span>
+        </div>
+        """
+        for filename, name, nrp, bg in team   # ← 4 variabel sesuai tuple 4 elemen
+    )
+ 
     return f"""
     <section class="about-section">
       <div class="about-kicker">Tim Pengembang</div>
       <h2>Tentang Kami</h2>
       <div class="team-grid">{cards}</div>
-
+ 
       <div class="about-info-grid">
         <div class="about-info-card">
           <b>Tentang Dashboard</b>
-          <p>SteamVault Pro adalah platform interaktif untuk eksplorasi dan rekomendasi game Steam yang dikembangkan untuk proyek mata kuliah Data Mining. Kami membangun dashboard ini menggunakan pendekatan <i>hybrid recommendation</i> yang menggabungkan <i>content-based filtering</i>, <i>collaborative signals</i>, dan <i>rule-based logic</i>. Setiap rekomendasi ditampilkan secara transparan agar pengguna bisa memahami proses analitis di baliknya.</p>
+          <p>SteamVault Pro adalah platform interaktif untuk eksplorasi dan rekomendasi game Steam
+          yang dikembangkan untuk proyek mata kuliah Data Mining. Kami membangun dashboard ini
+          menggunakan pendekatan <i>hybrid recommendation</i> yang menggabungkan
+          <i>content-based filtering</i>, <i>collaborative signals</i>, dan <i>rule-based logic</i>.
+          Setiap rekomendasi ditampilkan secara transparan agar pengguna bisa memahami proses
+          analitis di baliknya.</p>
         </div>
         <div class="about-info-card">
           <b>Tentang Data</b>
-          <p>Data yang digunakan berasal dari dataset <a href="https://www.kaggle.com/datasets/patelris/steam-top-1495-games-dataset" target="_blank" style="color: var(--gold); text-decoration: none;">Kaggle (Steam Top 1495 Games Dataset)</a> pada file <b>steam_top_games_2026.csv</b>. Setiap row dilengkapi dengan variabel penting seperti genre, <i>tags</i>, harga, ulasan pengguna, <i>playtime</i>, Metacritic score, dan estimasi jumlah pemilik. Seluruh data telah melalui tahapan <i>preprocessing</i>, pembersihan, dan normalisasi sebelum diimplementasikan ke dalam model.</p>
+          <p>Data yang digunakan berasal dari dataset
+          <a href="https://www.kaggle.com/datasets/patelris/steam-top-1495-games-dataset"
+          target="_blank" style="color:var(--gold);text-decoration:none;">
+          Kaggle (Steam Top 1495 Games Dataset)</a> pada file <b>steam_top_games_2026.csv</b>.
+          Setiap row dilengkapi dengan variabel penting seperti genre, <i>tags</i>, harga,
+          ulasan pengguna, <i>playtime</i>, Metacritic score, dan estimasi jumlah pemilik.
+          Seluruh data telah melalui tahapan <i>preprocessing</i>, pembersihan, dan normalisasi
+          sebelum diimplementasikan ke dalam model.</p>
         </div>
       </div>
     </section>
