@@ -4127,8 +4127,9 @@ def section_header(title: str, subtitle: str = "") -> str:
 
 def about_us_section() -> str:
     team = [
+        # (icon_emoji, name, NRP, bg_color)
         ("👩🏻‍💻", "Sharliz Mayalpen Zafirah", "5052241003", "#1A4A7A"),
-        ("👩🏽‍💻", "Amelia Widiastuti",        "5052241007", "#4A2060"),
+        ("👩🏻‍💻", "Amelia Widiastuti",        "5052241007", "#4A2060"),
         ("👨🏻‍💻", "Marvelio Jonathan Wijaya", "5052241017", "#0E4D3A"),
     ]
  
@@ -4166,7 +4167,7 @@ def about_us_section() -> str:
           <p>Data yang digunakan berasal dari dataset
           <a href="https://www.kaggle.com/datasets/patelris/steam-top-1495-games-dataset"
           target="_blank" style="color:var(--gold);text-decoration:none;">
-          Kaggle (Steam Top 1495 Games Dataset)</a> pada file <b>steam_top_games_2026.csv</b>.
+          Kaggle (Steam Top 1495 Games Dataset)</a> pada file <i>steam_top_games_2026.csv</i>.
           Setiap row dilengkapi dengan variabel penting seperti genre, <i>tags</i>, harga,
           ulasan pengguna, <i>playtime</i>, Metacritic score, dan estimasi jumlah pemilik.
           Seluruh data telah melalui tahapan <i>preprocessing</i>, pembersihan, dan normalisasi
