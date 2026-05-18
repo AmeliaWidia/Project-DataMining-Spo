@@ -3645,11 +3645,11 @@ def about_us_section() -> str:
     ]
     cards = "".join(f"""
     <div class="team-card">
-      <div class="team-avatar">{_avatar_from_assets(fname, initials, bg)}</div>
+      <div class="team-avatar">{_avatar_from_assets(emoji, bg)}</div>
       <span class="team-name">{esc(name)}</span>
-      <span class="team-role">{esc(role)}</span>
+      <span class="team-role">{esc(nrp)}</span>
     </div>
-    """ for fname, initials, name, role, bg in team)
+    """ for emoji, name, nrp, bg in team)
     return f"""
     <section class="about-section">
       <div class="about-kicker">Tim Pengembang</div>
