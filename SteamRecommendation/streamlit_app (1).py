@@ -2616,11 +2616,6 @@ def itemitem_cf_scores(
     if cf_matrix is None or not favorite_titles:
         return None
 
-    try:
-        from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
-    except ImportError:
-        return None
-
     title_lookup = {str(name).lower(): pos for pos, name in enumerate(games["name"].astype(str))}
     fav_positions = [title_lookup[t.lower()] for t in favorite_titles if t.lower() in title_lookup]
 
@@ -2631,7 +2626,7 @@ def itemitem_cf_scores(
     fav_vectors = cf_matrix[fav_positions]  # shape: (n_favs, n_tags)
 
     # Hitung similarity ke semua game
-    sims = sklearn_cosine(fav_vectors, cf_matrix)  # shape: (n_favs, n_games)
+    sims = cosine_similarity(fav_vectors, cf_matrix)  # shape: (n_favs, n_games)
 
     # Bobot per favorit: pakai quality_score agar favorit yang lebih baik punya pengaruh lebih
     quality_weights = games.iloc[fav_positions]["quality_score"].fillna(0.5).to_numpy()
@@ -2736,14 +2731,13 @@ def intra_list_diversity(recommended_indices: list[int], tfidf_matrix, k: int) -
     Mengukur: apakah hasil rekomendasi beragam atau terlalu mirip satu sama lain?
     Nilai tinggi = beragam (baik untuk user dengan selera luas)
     """
-    from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
     top_k = recommended_indices[:k]
     if len(top_k) < 2:
         return 0.0
     valid = [i for i in top_k if i < tfidf_matrix.shape[0]]
     if len(valid) < 2:
         return 0.0
-    sim_matrix = sklearn_cosine(tfidf_matrix[valid], tfidf_matrix[valid])
+    sim_matrix = cosine_similarity(tfidf_matrix[valid], tfidf_matrix[valid])
     n = len(valid)
     # Ambil upper triangle (hindari diagonal)
     upper_sim = [sim_matrix[i, j] for i in range(n) for j in range(i + 1, n)]
@@ -3210,7 +3204,6 @@ def recommend_games(
 # UI helpers
 # -----------------------------------------------------------------------------
 def esc(value: object) -> str:
-    import html, math
     if value is None:
         return ""
     try:
@@ -3846,10 +3839,10 @@ def premium_quality_scatter(scatter_df: pd.DataFrame, height: int = 340) -> go.F
 
 def render_weight_justification_panel(games: pd.DataFrame) -> None:
 
-    weights = games.attrs.get("quality_weights", {})
-    correlations = games.attrs.get("quality_correlations", {})
+    weights, correlations = compute_data_driven_weights(games)
+
     if not weights:
-        st.info("Bobot berbasis data belum tersedia (jalankan prepare_games terlebih dahulu).")
+        st.info("Bobot berbasis data belum tersedia.")
         return
 
     render_html(section_header(
@@ -3859,9 +3852,8 @@ def render_weight_justification_panel(games: pd.DataFrame) -> None:
     render_html(
         "<div class='mini-note'>"
         "Bobot setiap komponen <b>quality_score</b> dihitung dari korelasi Pearson "
-        "antara komponen tersebut dan <b>bayes_rating</b> — rating yang sudah dikoreksi "
-        "bias volume ulasan. Komponen dengan korelasi lebih tinggi mendapat bobot lebih besar. "
-        "Pendekatan ini menggantikan bobot hardcoded yang tidak bisa dipertanggungjawabkan secara empiris."
+        "antara komponen tersebut dan <b>bayes_rating</b> rating yang sudah dikoreksi "
+        "bias volume ulasan. Komponen dengan korelasi lebih tinggi mendapat bobot lebih besar."
         "</div>"
     )
 
@@ -3904,7 +3896,7 @@ def render_weight_justification_panel(games: pd.DataFrame) -> None:
     with col_w1:
         weight_df = pd.DataFrame({
             "Komponen": [label_map.get(k, k) for k in weights],
-            "Korelasi Pearson": [f"{correlations.get(k, 0)*100:.2f}%"],
+            "Korelasi Pearson": [f"{correlations.get(k, 0)*100:.2f}%" for k in weights],
             "Bobot Final": [f"{v*100:.2f}%" for v in weights.values()],
         })
         st.dataframe(weight_df, hide_index=True, use_container_width=True)
@@ -3917,15 +3909,13 @@ def render_weight_justification_panel(games: pd.DataFrame) -> None:
           setiap komponen dan Bayesian Rating. Nilai mendekati 100% artinya komponen
           tersebut sangat mencerminkan kualitas game yang divalidasi komunitas.<br><br>
           <b>Bobot Final</b> adalah normalisasi korelasi sehingga totalnya = 100%.
-          Komponen dengan korelasi lebih besar otomatis mendapat bobot lebih besar —
-          bukan dipilih secara arbitrer seperti sebelumnya (0.34, 0.22, dsb.).
+          Komponen dengan korelasi lebih besar otomatis mendapat bobot lebih besar.
           </p>
         </div>
         """)
 
 
 def render_evaluation_panel(eval_results: dict) -> None:
-    import plotly.graph_objects as go
 
     render_html(section_header(
         "Performa Mesin Rekomendasi",
