@@ -3920,6 +3920,188 @@ def premium_quality_scatter(scatter_df: pd.DataFrame, height: int = 340) -> go.F
     return polish_plotly(fig, height=height)
 
 
+def render_weight_justification_panel(games: pd.DataFrame) -> None:
+    import plotly.graph_objects as go
+
+    weights = games.attrs.get("quality_weights", {})
+    correlations = games.attrs.get("quality_correlations", {})
+    if not weights:
+        st.info("Bobot berbasis data belum tersedia (jalankan prepare_games terlebih dahulu).")
+        return
+
+    render_html(section_header(
+        "Justifikasi bobot quality_score",
+        "Korelasi Pearson empiris terhadap Bayesian Rating"
+    ))
+    render_html(
+        "<div class='mini-note'>"
+        "Bobot setiap komponen <b>quality_score</b> dihitung dari korelasi Pearson "
+        "antara komponen tersebut dan <b>bayes_rating</b> — rating yang sudah dikoreksi "
+        "bias volume ulasan. Komponen dengan korelasi lebih tinggi mendapat bobot lebih besar. "
+        "Pendekatan ini menggantikan bobot hardcoded yang tidak bisa dipertanggungjawabkan secara empiris."
+        "</div>"
+    )
+
+    label_map = {
+        "rating_score": "Rating Score",
+        "popularity_score": "Popularity Score",
+        "metacritic_norm": "Metacritic Norm",
+        "playtime_score": "Playtime Score",
+        "recency_score": "Recency Score",
+        "affordability_score": "Affordability Score",
+    }
+    labels = [label_map.get(k, k) for k in weights]
+    corr_vals = [round(correlations.get(k, 0) * 100, 2) for k in weights]
+    weight_vals = [round(v * 100, 2) for v in weights.values()]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name="Korelasi Pearson (%)",
+        x=labels, y=corr_vals,
+        marker_color="#A5C5CC",
+        text=[f"{v:.1f}%" for v in corr_vals],
+        textposition="outside",
+    ))
+    fig.add_trace(go.Bar(
+        name="Bobot yang Ditetapkan (%)",
+        x=labels, y=weight_vals,
+        marker_color="#FDC787",
+        text=[f"{v:.1f}%" for v in weight_vals],
+        textposition="outside",
+    ))
+    fig.update_layout(
+        title="Korelasi Pearson vs Bobot quality_score (data-driven)",
+        barmode="group",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    fig.update_yaxes(title="Nilai (%)")
+    st.plotly_chart(polish_plotly(fig, height=400), use_container_width=True)
+
+    col_w1, col_w2 = st.columns(2)
+    with col_w1:
+        weight_df = pd.DataFrame({
+            "Komponen": [label_map.get(k, k) for k in weights],
+            "Korelasi Pearson": [f"{correlations.get(k, 0)*100:.2f}%"],
+            "Bobot Final": [f"{v*100:.2f}%" for v in weights.values()],
+        })
+        st.dataframe(weight_df, hide_index=True, use_container_width=True)
+    with col_w2:
+        render_html("""
+        <div class='glass-panel'>
+          <b>Cara membaca tabel ini</b>
+          <p style='color:var(--text-soft);font-size:.84rem;line-height:1.6;'>
+          <b>Korelasi Pearson</b> menunjukkan seberapa kuat hubungan linier antara
+          setiap komponen dan Bayesian Rating. Nilai mendekati 100% artinya komponen
+          tersebut sangat mencerminkan kualitas game yang divalidasi komunitas.<br><br>
+          <b>Bobot Final</b> adalah normalisasi korelasi sehingga totalnya = 100%.
+          Komponen dengan korelasi lebih besar otomatis mendapat bobot lebih besar —
+          bukan dipilih secara arbitrer seperti sebelumnya (0.34, 0.22, dsb.).
+          </p>
+        </div>
+        """)
+
+
+def render_evaluation_panel(eval_results: dict) -> None:
+    import plotly.graph_objects as go
+
+    render_html(section_header(
+        "Evaluasi model rekomendasi",
+        f"Offline evaluation · {eval_results.get('n_eval_runs', 0)} simulasi user"
+    ))
+    render_html(
+        "<div class='mini-note'>"
+        "<b>Protokol:</b> Sistem disimulasikan dengan sampel game favorit acak dari dataset. "
+        "Setiap simulasi menghasilkan rekomendasi, lalu dihitung seberapa banyak game relevan "
+        "(positivity ≥ 80%, ≥ 500 ulasan) masuk ke top-K. "
+        "NDCG mengukur kualitas urutan — item lebih relevan seharusnya di atas."
+        "</div>"
+    )
+
+    k_values = [k for k in eval_results if isinstance(k, int)]
+    if not k_values:
+        st.warning("Data evaluasi belum tersedia.")
+        return
+
+    k_values.sort()
+
+    kpi_cols = st.columns(4)
+    best_k = k_values[-1]
+    kpi_data = eval_results.get(best_k, {})
+    kpi_cols[0].metric(f"Precision@{best_k}", f"{kpi_data.get(f'Precision@{best_k}', 0):.4f}")
+    kpi_cols[1].metric(f"NDCG@{best_k}", f"{kpi_data.get(f'NDCG@{best_k}', 0):.4f}")
+    kpi_cols[2].metric(f"ILD@{best_k}", f"{eval_results.get(best_k, {}).get(f'ILD@{best_k}', 0):.4f}")
+    kpi_cols[3].metric("Catalog Coverage", f"{eval_results.get('coverage', 0):.2%}")
+
+    p_vals = [eval_results[k].get(f"Precision@{k}", 0) for k in k_values]
+    n_vals = [eval_results[k].get(f"NDCG@{k}", 0) for k in k_values]
+    p_std  = [eval_results[k].get(f"Precision@{k}_std", 0) for k in k_values]
+    n_std  = [eval_results[k].get(f"NDCG@{k}_std", 0) for k in k_values]
+    k_labels = [f"K={k}" for k in k_values]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=k_labels, y=p_vals, name="Precision@K",
+        mode="lines+markers",
+        line=dict(color="#FDC787", width=3),
+        marker=dict(size=9),
+        error_y=dict(type="data", array=p_std, visible=True, color="#FDC787"),
+    ))
+    fig.add_trace(go.Scatter(
+        x=k_labels, y=n_vals, name="NDCG@K",
+        mode="lines+markers",
+        line=dict(color="#A5C5CC", width=3),
+        marker=dict(size=9),
+        error_y=dict(type="data", array=n_std, visible=True, color="#A5C5CC"),
+    ))
+    fig.update_layout(
+        title="Precision@K dan NDCG@K (dengan std dev)",
+        yaxis_title="Nilai metrik (0–1)",
+    )
+    st.plotly_chart(polish_plotly(fig, height=380), use_container_width=True)
+
+    table_rows = []
+    for k in k_values:
+        row = eval_results[k]
+        table_rows.append({
+            "K": k,
+            "Precision@K": f"{row.get(f'Precision@{k}', 0):.4f} ± {row.get(f'Precision@{k}_std', 0):.4f}",
+            "NDCG@K": f"{row.get(f'NDCG@{k}', 0):.4f} ± {row.get(f'NDCG@{k}_std', 0):.4f}",
+            "ILD@K": f"{row.get(f'ILD@{k}', 0):.4f}",
+        })
+    table_rows.append({
+        "K": "Coverage",
+        "Precision@K": "-",
+        "NDCG@K": "-",
+        "ILD@K": f"{eval_results.get('coverage', 0):.2%} dari katalog",
+    })
+    eval_df = pd.DataFrame(table_rows)
+    st.dataframe(eval_df, hide_index=True, use_container_width=True)
+
+    with st.expander("Interpretasi metrik evaluasi", expanded=False):
+        render_html("""
+        <div class='glass-panel'>
+          <b>Precision@K</b>
+          <p style='color:var(--text-soft);font-size:.84rem;line-height:1.6;'>
+          Proporsi game relevan dari K rekomendasi teratas. Game relevan = positivity ≥ 80%
+          <i>dan</i> ≥ 500 ulasan. Nilai 0.6 artinya 60% dari top-K rekomendasi adalah game berkualitas.
+          </p>
+          <b>NDCG@K (Normalized Discounted Cumulative Gain)</b>
+          <p style='color:var(--text-soft);font-size:.84rem;line-height:1.6;'>
+          Mengukur kualitas urutan rekomendasi. Game sangat relevan (top 10% quality)
+          seharusnya muncul di posisi atas, bukan bawah. Nilai 1.0 = urutan sempurna.
+          </p>
+          <b>ILD (Intra-List Diversity)</b>
+          <p style='color:var(--text-soft);font-size:.84rem;line-height:1.6;'>
+          Rata-rata dissimilarity antar game dalam daftar rekomendasi.
+          Nilai tinggi = rekomendasi beragam. Nilai rendah = terlalu mirip (filter bubble).
+          </p>
+          <b>Catalog Coverage</b>
+          <p style='color:var(--text-soft);font-size:.84rem;line-height:1.6;'>
+          Proporsi game unik yang pernah muncul di rekomendasi dari seluruh simulasi.
+          Coverage tinggi = sistem tidak hanya merekomendasikan game mainstream.
+          </p>
+        </div>
+        """)
 
 def top_unique_games(df: pd.DataFrame, sort_col: str, used_names: set[str], n: int = 3) -> pd.DataFrame:
     """Pick top games while avoiding repeated titles"""
@@ -3932,8 +4114,6 @@ def top_unique_games(df: pd.DataFrame, sort_col: str, used_names: set[str], n: i
         fresh = pd.concat([fresh, fallback], axis=0)
     used_names.update(fresh["name"].astype(str).tolist())
     return fresh
-
-
 
 
 def render_sidebar_brand() -> None:
@@ -4407,6 +4587,7 @@ elif nav_view == "Recommend":
         games=games,
         matrix=tfidf_matrix,
         vectorizer=vectorizer,
+        cf_matrix_itemitem=cf_itemitem_matrix,
         engine=engine,
         favorite_titles=favorite_titles,
         preferred_genres=preferred_genres,
